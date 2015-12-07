@@ -33,3 +33,26 @@ free_model(model *, int free_cps)
 {
   return 0;
 }
+
+param_set *
+get_param_set(model * m_t)
+{
+  // make param_set object
+  param_set * ps_t = TALLOC(param_set, 1);
+  ps_t -> N_par = TALLOC(int, m_t -> N_cps);
+  ps_t -> par = TALLOC(double *, m_t -> N_cps);
+  ps_t -> par_lim = TALLOC(double *, m_t -> N_cps);
+
+  // write number of parameters and set pointers
+  int I_cp, N_cps = m_t -> N_cps;
+  for(I_cp = 0; I_cp < N_cps; ++ I_cp)
+    *(ps_t -> N_par + I_cp) = (*(m_t -> cps + I_cp)) -> N_par,
+    *(ps_t -> par + I_cp) = (*(m_t -> cps + I_cp)) -> par,
+    *(ps_t -> par_lim + I_cp) = (*(m_t -> cps + I_cp)) -> par_lim;
+
+  // set other properties
+  ps_t -> N_cps = N_cps;
+
+  // return
+  return ps_t;
+}

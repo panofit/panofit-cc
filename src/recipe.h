@@ -10,6 +10,6 @@ typedef struct _recipe
 
 } recipe;
 
-
+recipe make_empty_recipe();
 
 #endif // _RECIPE_H
