@@ -1,0 +1,13 @@
+
+Parameters of a component:
+
+1. xc, yc
+2. pitch, incli, phase
+3. structural parameters
+4. stellar population parameters
+
+Format of the spec_lib file
+
+1. N_age, N_Z, N_spx,
+2. age_ax, Z_ax, wl_ax
+3. spec_lib

@@ -19,6 +19,7 @@ typedef struct _spec_lib
 
   // data hold there
   double * data;
+
 } spec_lib;
 
 // spectrum object
@@ -39,9 +40,10 @@ struct _spectrum
   int is_shared_wl; // avoid multi-free
 };
 
-spectrum * make_empty_spectrum();
-int free_spectrum();
+spectrum * make_empty_spectrum(spec_lib *);
+int free_spectrum(spectrum *);
 
-spec_lib * load_spec_lib_raw(const char * spec_file);
+spec_lib * load_spec_lib_raw(const char *);
+int free_spec_lib(spec_lib *);
 
 #endif
