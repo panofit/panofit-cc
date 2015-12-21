@@ -29,8 +29,18 @@ make_model(const char * name, int N_cps, ...)
 }
 
 int
-free_model(model *, int free_cps)
+free_model(model * m_t, int free_cps)
 {
+  if(free_cps)
+    {
+      int I_cp, N_cps = m_t -> N_cps;
+      for(I_cp = 0; I_cp < N_cps; ++ I_cp)
+        (*((m_t -> cps + I_cp) -> kill))(m_t -> cps + I_cp);
+    }
+
+  // free componen and return
+  free(m_t -> cps), free(m_t);
+  
   return 0;
 }
 

@@ -9,6 +9,7 @@ typedef struct _recipe
 
   // grid points in age and Z
   int N_age, N_Z;
+  double * age_ax, * Z_ax;
 
   // data
   double * rcp;

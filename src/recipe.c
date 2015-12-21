@@ -18,6 +18,9 @@ make_empty_recipe(spec_lib * lib_t)
   rcp_t -> x = 0., rcp -> y = 0., rcp -> z = 0.;
   rcp_t -> N_age = lib_t -> N_age,
   rcp_t -> N_Z = lib_t -> N_Z;
+  
+  rcp_t -> age_ax = lib_t -> age_ax,
+  rcp_t -> Z_ax = lib_t -> Z_ax;
 
   // return object
   return rcp_t;

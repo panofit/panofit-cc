@@ -4,6 +4,7 @@
 
 #include "float.h"
 
+// make an empty component
 component *
 make_base_component(int N_par)
 {
