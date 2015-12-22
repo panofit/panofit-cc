@@ -1,18 +1,19 @@
 
 #include "expdisk.h"
-#include "component.h"
-#include "recipe.h"
+#include "../component.h"
+#include "../recipe.h"
+#include "../utils.h"
 
 #include "string.h"
 #include "math.h"
 
 // useful definitions
-#define SC  (par[ 0])
+#define IC  (par[ 0])
 #define XC  (par[ 1])
 #define YC  (par[ 2])
 #define PHI (par[ 3])
 #define A   (par[ 4])
-#define E   (par[ 5])
+#define Q   (par[ 5])
 #define C   (par[ 6])
 #define AMC (par[ 7])
 #define ASC (par[ 8])
@@ -29,7 +30,7 @@ component *
 cps_expdisk_2d(double * par, double * par_lim, int * is_const,
     const char * name)
 {
-  // par: S_c, x_c, y_c, phi, a, E, c, Amc, Asc, Zmc, Zsc, Amk, Ask, Zmk, Zsk
+  // par: S_c, x_c, y_c, phi, a, Q, c, Amc, Asc, Zmc, Zsc, Amk, Ask, Zmk, Zsk
   int I_par, N_fp = 0;
 
   // make new component
@@ -66,10 +67,52 @@ _cps_expdisk_2d_sigma(double x, double y, double const * par)
 
   // generalized radius
   double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / E, C), 1. / C);
+                + pow(abs(y_t - YC) / Q, C), 1. / C);
 
   // surface density
-  return exp(-r / A);
+  return exp(-r / A) * IC;
+}
+
+double
+_cps_expdisk_2d_sigma_arr(int N_pt, double * x, double * y,
+    double const * par, double * sigma)
+{
+  int I_pt;
+
+  // rotate back
+  double * r_t = TALLOC(double, N_pt),
+         * cos_rt = TALLOC(double, N_pt),
+         * sin_rt = TALLOC(double, N_pt),
+         * x_t = TALLOC(double, N_pt),
+         * y_t = TALLOC(double, N_pt);
+  double cos_pt = cos(PHI), sin_pt = sin(PHI);
+
+  FOREACH(I_pt, N_pt)
+    r_t[I_pt] = sqrt(Sq(x[I_pt]) + Sq(y[I_pt]);
+
+  FOREACH(I_pt, N_pt)
+    {
+      cos_rt[I_pt] = x[I_pt] / r_t[I_pt];
+      sin_rt[I_pt] = y[I_pt] / r_t[I_pt];
+    }
+
+  FOREACH(I_pt, N_pt)
+    {
+      x_t[I_pt] = r_t[I_pt] * (cos_rt[I_pt] * cos_pt + sin_rt[I_pt] * sin_pt);
+      y_t[I_pt] = r_t[I_pt] * (sin_rt[I_pt] * cos_pt - cos_rt[I_pt] * sin_pt);
+    }
+
+  // generalized radius
+  double * r = TALLOC(double, N_pt);
+
+  FOREACH(I_pt, N_pt)
+    r[I_pt] = pow( pow(abs(x_t[I_pt] - XC),     C)
+                 + pow(abs(y_t[I_pt] - YC) / Q, C), 1. / C);
+
+  // surface density
+  FOREACH(I_pt, N_pt) exp(-r[I_pt] / A) * IC;
+
+  // free objects
 }
 
 // recipe of a 2d exponential disk
@@ -86,8 +129,8 @@ _cps_expdisk_2d_recipe(double x, double y,
 
   // generalized radius and surface density
   double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / E, C), 1. / C);
-  double sigma = exp(-r / A);
+                + pow(abs(y_t - YC) / Q, C), 1. / C);
+  double sigma = exp(-r / A) * IC;
 
   // grid points for recipe
   int I_age, I_Z, N_age = rcp_t -> N_age, N_Z = rcp_t -> Z;
@@ -117,12 +160,12 @@ _cps_expdisk_2d_recipe(double x, double y,
 }
 
 // undefine them
-#undef SC
+#undef IC
 #undef XC
 #undef YC
 #undef PHI
 #undef A
-#undef E
+#undef Q
 #undef C
 #undef AMC
 #undef ASC
@@ -133,4 +176,5 @@ _cps_expdisk_2d_recipe(double x, double y,
 #undef ZMK
 #undef ZSK
 
+#undef Sq
 // end of expdisk.c

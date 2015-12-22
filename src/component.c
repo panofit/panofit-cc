@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "component.h"
 
+#include "stdlib.h"
 #include "float.h"
 
 // make an empty component
@@ -65,4 +66,6 @@ int cps_uni_recipe(double x, double y,
   {return 0;}
 
 // dummy function for bounds check. always pass.
-int cps_bounds_ok(double const *) {return 0; /* banana! */}
+int cps_bounds_ok(double const * par) {return 0; /* banana! */}
+
+// compiled, Dec 23, 2015

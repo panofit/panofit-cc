@@ -31,8 +31,8 @@ typedef struct _param_set
 
 } param_set;
 
-model * make_model(int N_cps, ...);
-int free_model(model *);
+model * make_model(const char * name, int N_cps, ...);
+int free_model(model *, int);
 param_set * get_param_set(model * m_t);
 
 #endif // _MODEL_H

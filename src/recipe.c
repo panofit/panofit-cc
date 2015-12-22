@@ -1,24 +1,28 @@
 
+#include "spectrum.h"
 #include "model.h"
 #include "recipe.h"
+#include "utils.h"
+
+#include "stdlib.h"
 
 recipe *
 make_empty_recipe(spec_lib * lib_t)
 {
+  int I_pt, N_pts = (lib_t -> N_age) * (lib_t -> N_Z);
+
   // allocate recipe
   recipe * rcp_t = TALLOC(recipe, 1);
-  rcp_t -> rcp = TALLOC(double, N_age_pts * N_Z_pts);
+  rcp_t -> rcp   = TALLOC(double, N_pts);
 
   // set to zero
-  int I_pt, N_pts = N_age_pts * N_Z_pts;
-  for(I_pt = 0; I_pt < N_pts; ++ I_pt)
-    *(rcp_t -> rcp + I_pt) = 0.;
+  FOREACH(I_pt, N_pts) rcp_t -> rcp[I_pt] = 0.;
 
   // set properties
-  rcp_t -> x = 0., rcp -> y = 0., rcp -> z = 0.;
+  rcp_t -> x = 0., rcp_t -> y = 0., rcp_t -> z = 0.;
   rcp_t -> N_age = lib_t -> N_age,
   rcp_t -> N_Z = lib_t -> N_Z;
-  
+
   rcp_t -> age_ax = lib_t -> age_ax,
   rcp_t -> Z_ax = lib_t -> Z_ax;
 

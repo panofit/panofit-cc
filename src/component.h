@@ -19,18 +19,18 @@ struct _component
   void * ws;
 
   // calculate surface density and stellar recipe
-  double (sigma *)(double, double, double const *);
-  int (recipe *)(double, double, const double *, double const *);
+  double (* sigma)(double, double, double const *);
+  int (* recipe)(double, double, const double *, double const *);
 
   // boundary check
-  int (check *)(double const *);
+  int (* check)(double const *);
 
   // initialize and finalize
-  int (init *)(component *);
-  int (kill *)(component *);
+  int (* init)(component *);
+  int (* kill)(component *);
 };
 
-component make_base_component(int N_par);
+component * make_base_component(int);
 
 int cps_uni_init(component *);
 int cps_uni_kill(component *);
