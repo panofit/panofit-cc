@@ -46,6 +46,12 @@ make_base_component(int N_par)
   cp_t -> recipe = & cps_uni_recipe;
 }
 
+int free_component(component * cp_t)
+{
+  (cp_t -> kill)(cp_t); free(cp_t);
+  return 0;
+}
+
 // universal init and kill func.
 int cps_uni_init(component * cp_t) {return 0;}
 

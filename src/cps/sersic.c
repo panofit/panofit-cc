@@ -1,5 +1,5 @@
 
-#include "../sersic.h"
+#include "./sersic.h"
 #include "../component.h"
 #include "../recipe.h"
 
@@ -59,7 +59,7 @@ double
 _cps_sersic_2d_sigma(double x, double y, double const * par)
 {
   // rotate back
-  double r_t = sqrt(Sq(x) + Sq(y);
+  double r_t = sqrt(Sq(x) + Sq(y));
   double cos_rt = x / r_t,  sin_rt = y / r_t,
          cos_pt = cos(PHI), sin_pt = sin(PHI);
   double x_t = r_t * (cos_rt * cos_pt + sin_rt * sin_pt), // cos(rt - pt)
@@ -82,10 +82,10 @@ _cps_sersic_2d_sigma(double x, double y, double const * par)
 // recipe of a 2d sersic component
 double
 _cps_expdisk_2d_recipe(double x, double y,
-    const double * rcp, double const * par)
+    recipe * rcp_t, double const * par)
 {
   // rotate back
-  double r_t = sqrt(Sq(x) + Sq(y);
+  double r_t = sqrt(Sq(x) + Sq(y));
   double cos_rt = x / r_t,  sin_rt = y / r_t,
          cos_pt = cos(PHI), sin_pt = sin(PHI);
   double x_t = r_t * (cos_rt * cos_pt + sin_rt * sin_pt), // cos(rt - pt)
@@ -105,7 +105,7 @@ _cps_expdisk_2d_recipe(double x, double y,
   double sigma = IRS * exp(-dn * (pow(r, 1. / n) - 1.));
 
   // grid points for recipe
-  int I_age, I_Z, N_age = rcp_t -> N_age, N_Z = rcp_t -> Z;
+  int I_age, I_Z, N_age = rcp_t -> N_age, N_Z = rcp_t -> N_Z;
   double * age_ax = rcp_t -> age_ax, * Z_ax = rcp_t -> Z_ax;
 
   // mean and std. of age and metallicity
@@ -121,7 +121,7 @@ _cps_expdisk_2d_recipe(double x, double y,
           * exp(-Sq(Z_ax[I_Z]) / (2. * s_Z_sq));
 
   // normalize to sigma
-  int N_size = N_age * N_Z; I_px;
+  int N_size = N_age * N_Z, I_px;
   double sum_t = 0;
   for(I_px = 0; I_px < N_size; ++ I_px) sum_t += rc[I_px];
 

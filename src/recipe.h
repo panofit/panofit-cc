@@ -3,6 +3,7 @@
 #define _RECIPE_H
 
 typedef struct _spec_lib spec_lib;
+typedef struct _model model;
 
 typedef struct _recipe
 {

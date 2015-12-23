@@ -31,6 +31,7 @@ struct _component
 };
 
 component * make_base_component(int);
+int free_component(component *);
 
 int cps_uni_init(component *);
 int cps_uni_kill(component *);

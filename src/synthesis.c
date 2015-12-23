@@ -1,11 +1,13 @@
 
 #include "synthesis.h"
 #include "recipe.h"
+#include "spectrum.h"
+#include "model.h"
 
 #include "assert.h"
 
 spectrum *
-synthesis(recipe * rcp_t, spec_lib * lib_t, double x, double y);
+synthesis(recipe * rcp_t, spec_lib * lib_t, double x, double y)
 {
   // make a new spectrum
   spectrum * sp_t = make_empty_spectrum(lib_t);
@@ -31,7 +33,7 @@ synthesis_noalloc(recipe * rcp_t, spec_lib * lib_t,
       N_age = lib_t -> N_age, N_Z = lib_t -> N_Z;
 
   // library, recipe and target
-  double * spl = lib_t -> data, * rcp = rcp_t -> rcp;
+  double * spl = lib_t -> data, * rcp = rcp_t -> rcp,
       * flux = sp_t -> flux, * err = sp_t -> err;
 
   // fill flux and err with zeros
