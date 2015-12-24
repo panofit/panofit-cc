@@ -20,6 +20,7 @@ typedef struct _recipe
 } recipe;
 
 recipe * make_empty_recipe(spec_lib *);
+recipe * make_empty_recipe_as(recipe *);
 int free_recipe();
 
 recipe * sample_recipe(model *, double, double);

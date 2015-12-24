@@ -68,8 +68,7 @@ int cps_uni_kill(component * cp_t)
 double cps_uni_sigma(double x, double y, double const * par) {return -1.;}
 
 int cps_uni_recipe(double x, double y,
-    const double * rcp, double const * par)
-  {return 0;}
+    recipe * rcp, double const * par) {return 0;}
 
 // dummy function for bounds check. always pass.
 int cps_bounds_ok(double const * par) {return 0; /* banana! */}

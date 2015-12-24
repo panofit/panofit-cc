@@ -77,7 +77,7 @@ main(int argc, char ** argv)
     }
 
     // create empty recipe // passed
-    if(1)
+    if(0)
       {
         int I_pt;
 

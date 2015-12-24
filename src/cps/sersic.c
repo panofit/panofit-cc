@@ -2,7 +2,9 @@
 #include "./sersic.h"
 #include "../component.h"
 #include "../recipe.h"
+#include "../utils.h"
 
+#include "stdlib.h"
 #include "string.h"
 #include "math.h"
 
@@ -50,8 +52,14 @@ cps_sersic_2d(double * par, double * par_lim, int * is_const, const char * name)
     if(! *(is_const + I_par)) ++ N_fp;
   cp_t -> N_fp = N_fp;
 
-  // misc
+  // give name
   strcpy(cp_t -> name, name);
+
+  // set function headers
+  cp_t -> sigma = & _cps_sersic_2d_sigma;
+  cp_t -> recipe = & _cps_sersic_2d_recipe;
+
+  return cp_t;
 }
 
 // surface density of a 2d sersic disk
@@ -62,12 +70,13 @@ _cps_sersic_2d_sigma(double x, double y, double const * par)
   double r_t = sqrt(Sq(x) + Sq(y));
   double cos_rt = x / r_t,  sin_rt = y / r_t,
          cos_pt = cos(PHI), sin_pt = sin(PHI);
+  if(!isfinite(cos_rt)) cos_rt = 1., sin_rt = 0.;
   double x_t = r_t * (cos_rt * cos_pt + sin_rt * sin_pt), // cos(rt - pt)
          y_t = r_t * (sin_rt * cos_pt - cos_rt * sin_pt); // sin(rt - pt)
 
   // generalized radius
-  double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / Q, C), 1. / C);
+  double r = pow( pow(fabs(x_t - XC),     C)
+                + pow(fabs(y_t - YC) / Q, C), 1. / C);
 
   // calculate dn
   double n = SN, n_sq = Sq(SN);
@@ -79,9 +88,60 @@ _cps_sersic_2d_sigma(double x, double y, double const * par)
   return IRS * exp(-dn * (pow(r, 1. / n) - 1.));
 }
 
+int
+_cps_sersic_2d_sigma_arr(int N_pt, double * x, double * y,
+    double const * par, double * sigma)
+{
+  int I_pt;
+
+  // rotate back
+  double * r_t = TALLOC(double, N_pt),
+         * cos_rt = TALLOC(double, N_pt),
+         * sin_rt = TALLOC(double, N_pt),
+         * x_t = TALLOC(double, N_pt),
+         * y_t = TALLOC(double, N_pt);
+  double cos_pt = cos(PHI), sin_pt = sin(PHI);
+
+  FOREACH(I_pt, N_pt)
+    r_t[I_pt] = sqrt(Sq(x[I_pt]) + Sq(y[I_pt]));
+
+  FOREACH(I_pt, N_pt)
+    {
+      if(r_t[I_pt] != 0.)
+        cos_rt[I_pt] = x[I_pt] / r_t[I_pt],
+        sin_rt[I_pt] = y[I_pt] / r_t[I_pt];
+      else cos_rt[I_pt] = 1., sin_rt[I_pt] = 0.;
+    }
+
+  FOREACH(I_pt, N_pt)
+    {
+      x_t[I_pt] = r_t[I_pt] * (cos_rt[I_pt] * cos_pt + sin_rt[I_pt] * sin_pt);
+      y_t[I_pt] = r_t[I_pt] * (sin_rt[I_pt] * cos_pt - cos_rt[I_pt] * sin_pt);
+    }
+
+  // generalized radius
+  double * r = TALLOC(double, N_pt);
+
+  FOREACH(I_pt, N_pt)
+    r[I_pt] = pow( pow(fabs(x_t[I_pt] - XC),     C)
+                 + pow(fabs(y_t[I_pt] - YC) / Q, C), 1. / C);
+
+  // surface density
+  double n = SN, n_sq = Sq(SN);
+  double dn = 3. * n - (1. / 3.) + (8. / 1215.) / n
+            + (184. / 229635.) / n_sq + (1048. / 31000725.) / (n * n_sq)
+            - (17557576. / 1242974068875.) / Sq(n_sq);
+
+  FOREACH(I_pt, N_pt)
+    sigma[I_pt] = IRS * exp(-dn * (pow(r[I_pt], 1. / n) - 1.));
+
+  // free objects
+  free(r_t), free(cos_rt), free(sin_rt), free(x_t), free(y_t), free(r);
+}
+
 // recipe of a 2d sersic component
-double
-_cps_expdisk_2d_recipe(double x, double y,
+int
+_cps_sersic_2d_recipe(double x, double y,
     recipe * rcp_t, double const * par)
 {
   // rotate back
@@ -92,8 +152,8 @@ _cps_expdisk_2d_recipe(double x, double y,
          y_t = r_t * (sin_rt * cos_pt - cos_rt * sin_pt); // sin(rt - pt)
 
   // generalized radius
-  double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / Q, C), 1. / C);
+  double r = pow( pow(fabs(x_t - XC),     C)
+                + pow(fabs(y_t - YC) / Q, C), 1. / C);
 
   // calculate dn
   double n = SN, n_sq = Sq(SN);
@@ -117,8 +177,8 @@ _cps_expdisk_2d_recipe(double x, double y,
   for(I_age = 0; I_age < N_age; ++ I_age)
     for(I_Z = 0; I_Z < N_Z; ++ I_Z)
       *(rc + I_age * N_Z + I_Z) =
-            exp(-Sq(age_ax[I_age]) / (2. * s_age_sq))
-          * exp(-Sq(Z_ax[I_Z]) / (2. * s_Z_sq));
+            exp(-Sq(age_ax[I_age] - c_age) / (2. * s_age_sq))
+          * exp(-Sq(Z_ax[I_Z] - c_Z) / (2. * s_Z_sq));
 
   // normalize to sigma
   int N_size = N_age * N_Z, I_px;

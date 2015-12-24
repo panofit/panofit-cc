@@ -3,6 +3,7 @@
 #include "model.h"
 #include "recipe.h"
 #include "utils.h"
+#include "component.h"
 
 #include "stdlib.h"
 
@@ -28,6 +29,45 @@ make_empty_recipe(spec_lib * lib_t)
 
   // return object
   return rcp_t;
+}
+
+recipe *
+make_empty_recipe_as(recipe * rc_t)
+{
+  int I_pt, N_pts = (rc_t -> N_age) * (rc_t -> N_Z);
+
+  // allocate recipe
+  recipe * rcp_t = TALLOC(recipe, 1);
+  rcp_t -> rcp   = TALLOC(double, N_pts);
+
+  // set to zero
+  FOREACH(I_pt, N_pts) rcp_t -> rcp[I_pt] = 0.;
+
+  // set properties
+  rcp_t -> x = 0., rcp_t -> y = 0., rcp_t -> z = 0.;
+  rcp_t -> N_age = rc_t -> N_age,
+  rcp_t -> N_Z   = rc_t -> N_Z;
+
+  rcp_t -> age_ax = rc_t -> age_ax,
+  rcp_t -> Z_ax = rc_t -> Z_ax;
+
+  return rcp_t;
+}
+
+// co-add recipes. rc_s = rc_s + rc_i
+int
+recipe_coadd(recipe * rc_s, recipe * rc_i)
+{
+  // check!
+  int I_pt, N_Z = rc_s -> N_Z, N_age = rc_s -> N_age;
+  if((N_Z != rc_i -> N_Z) || (N_age != rc_i -> N_age)) return -1;
+
+  // co-add
+  int N_size = N_Z * N_age;
+  FOREACH(I_pt, N_size) rc_s -> rcp[I_pt] += rc_i -> rcp[I_pt];
+
+  // return
+  return 0;
 }
 
 int
@@ -56,8 +96,15 @@ int
 sample_recipe_noalloc(model * m_t, double x, double y, recipe * rcp_t)
 {
   // loop over components
+  int I_cp, N_cps = m_t -> N_cps;
 
-  // for each component, estimate recipe,
+  // empty recipe (for co-adding)
+  recipe * rcp_i = make_empty_recipe_as(rcp_t);
 
-  // find sum,
+  // for each component, estimate recipe and co-add them
+  for(I_cp = 0; I_cp < N_cps; ++ I_cp)
+    ((m_t -> cps[I_cp]) -> recipe)(x, y, rcp_i, (m_t -> cps[I_cp]) -> par),
+    recipe_coadd(rcp_t, rcp_i);
+
+  return 0;
 }

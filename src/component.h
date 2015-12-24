@@ -3,6 +3,7 @@
 #define _COMPONENT_H
 
 typedef struct _component component;
+typedef struct _recipe recipe;
 
 struct _component
 {
@@ -20,7 +21,7 @@ struct _component
 
   // calculate surface density and stellar recipe
   double (* sigma)(double, double, double const *);
-  int (* recipe)(double, double, const double *, double const *);
+  int (* recipe)(double, double, recipe *, double const *);
 
   // boundary check
   int (* check)(double const *);
@@ -36,7 +37,7 @@ int free_component(component *);
 int cps_uni_init(component *);
 int cps_uni_kill(component *);
 double cps_uni_sigma(double, double, double const *);
-int cps_uni_recipe(double, double, const double *, double const *);
+int cps_uni_recipe(double, double, recipe *, double const *);
 int cps_bounds_ok(double const *);
 
 #endif // _COMPONENT_H

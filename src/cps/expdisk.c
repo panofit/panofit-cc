@@ -8,6 +8,8 @@
 #include "string.h"
 #include "math.h"
 
+#include "stdio.h"
+
 // useful definitions
 #define IC  (par[ 0])
 #define XC  (par[ 1])
@@ -51,8 +53,14 @@ cps_expdisk_2d(double * par, double * par_lim, int * is_const,
     if(! *(is_const + I_par)) ++ N_fp;
   cp_t -> N_fp = N_fp;
 
-  // misc
+  // set name
   strcpy(cp_t -> name, name);
+
+  // set function headers
+  cp_t -> sigma = & _cps_expdisk_2d_sigma;
+  cp_t -> recipe = & _cps_expdisk_2d_recipe;
+
+  return cp_t;
 }
 
 // surface density of a 2d exponential disk
@@ -63,18 +71,19 @@ _cps_expdisk_2d_sigma(double x, double y, double const * par)
   double r_t = sqrt(Sq(x) + Sq(y));
   double cos_rt = x / r_t,  sin_rt = y / r_t,
          cos_pt = cos(PHI), sin_pt = sin(PHI);
+  if (!isfinite(cos_rt)) cos_rt = 1., sin_rt = 0.;
   double x_t = r_t * (cos_rt * cos_pt + sin_rt * sin_pt), // cos(rt - pt)
          y_t = r_t * (sin_rt * cos_pt - cos_rt * sin_pt); // sin(rt - pt)
 
   // generalized radius
-  double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / Q, C), 1. / C);
+  double r = pow( pow(fabs(x_t - XC),     C)
+                + pow(fabs(y_t - YC) / Q, C), 1. / C);
 
   // surface density
   return exp(-r / A) * IC;
 }
 
-double
+int
 _cps_expdisk_2d_sigma_arr(int N_pt, double * x, double * y,
     double const * par, double * sigma)
 {
@@ -91,11 +100,20 @@ _cps_expdisk_2d_sigma_arr(int N_pt, double * x, double * y,
   FOREACH(I_pt, N_pt)
     r_t[I_pt] = sqrt(Sq(x[I_pt]) + Sq(y[I_pt]));
 
+  // print_head(r_t, 9);
+
   FOREACH(I_pt, N_pt)
     {
-      cos_rt[I_pt] = x[I_pt] / r_t[I_pt];
-      sin_rt[I_pt] = y[I_pt] / r_t[I_pt];
+      if(r_t[I_pt] != 0.)
+        cos_rt[I_pt] = x[I_pt] / r_t[I_pt],
+        sin_rt[I_pt] = y[I_pt] / r_t[I_pt];
+      else cos_rt[I_pt] = 1., sin_rt[I_pt] = 0.;
     }
+
+  /*
+  print_head(cos_rt, 9);
+  print_head(sin_rt, 9);
+  */
 
   FOREACH(I_pt, N_pt)
     {
@@ -103,17 +121,31 @@ _cps_expdisk_2d_sigma_arr(int N_pt, double * x, double * y,
       y_t[I_pt] = r_t[I_pt] * (sin_rt[I_pt] * cos_pt - cos_rt[I_pt] * sin_pt);
     }
 
+  /*
+  print_head(x_t, 9);
+  print_head(y_t, 9);
+  */
+
   // generalized radius
   double * r = TALLOC(double, N_pt);
 
   FOREACH(I_pt, N_pt)
-    r[I_pt] = pow( pow(abs(x_t[I_pt] - XC),     C)
-                 + pow(abs(y_t[I_pt] - YC) / Q, C), 1. / C);
+    r[I_pt] = pow( pow(fabs(x_t[I_pt] - XC),     C)
+                 + pow(fabs(y_t[I_pt] - YC) / Q, C), 1. / C);
+
+  //print_head(r, 9);
+  //printf("Xc: %f, Yc: %f, C: %f, Q: %f\n", XC, YC, C, Q);
+
+  //save_array(r, 257 * 257, "xt.tmp");
+  //draw_image("xt.tmp", 257, 257);
 
   // surface density
-  FOREACH(I_pt, N_pt) exp(-r[I_pt] / A) * IC;
+  FOREACH(I_pt, N_pt) sigma[I_pt] = exp(-r[I_pt] / A) * IC;
+
+  //print_head(sigma, 9);
 
   // free objects
+  free(r_t), free(cos_rt), free(sin_rt), free(x_t), free(y_t), free(r);
 }
 
 // recipe of a 2d exponential disk
@@ -125,12 +157,13 @@ _cps_expdisk_2d_recipe(double x, double y,
   double r_t = sqrt(Sq(x) + Sq(y));
   double cos_rt = x / r_t,  sin_rt = y / r_t,
          cos_pt = cos(PHI), sin_pt = sin(PHI);
+  if (!isfinite(cos_rt)) cos_rt = 1., sin_rt = 0.;
   double x_t = r_t * (cos_rt * cos_pt + sin_rt * sin_pt), // cos(rt - pt)
          y_t = r_t * (sin_rt * cos_pt - cos_rt * sin_pt); // sin(rt - pt)
 
   // generalized radius and surface density
-  double r = pow( pow(abs(x_t - XC),     C)
-                + pow(abs(y_t - YC) / Q, C), 1. / C);
+  double r = pow( pow(fabs(x_t - XC),     C)
+                + pow(fabs(y_t - YC) / Q, C), 1. / C);
   double sigma = exp(-r / A) * IC;
 
   // grid points for recipe
@@ -141,13 +174,21 @@ _cps_expdisk_2d_recipe(double x, double y,
   double c_age = AMC + AMK * r, s_age_sq = Sq(ASC + ASK * r),
          c_Z   = ZMC + ZMK * r, s_Z_sq   = Sq(ZSC + ZSK * r);
 
+  /* //debug
+  printf("c_age = %f, s_age_sq = %f, c_Z = %f, s_Z_sq = %f\n",
+         c_age, s_age_sq, c_Z, s_Z_sq);
+  */
+
+  print_head(age_ax, N_age),
+  print_head(Z_ax, N_Z);
+
   // make recipe!
   double * rc = rcp_t -> rcp;
   for(I_age = 0; I_age < N_age; ++ I_age)
     for(I_Z = 0; I_Z < N_Z; ++ I_Z)
-      *(rc + I_age * N_Z + I_Z) =
-            exp(-Sq(age_ax[I_age]) / (2. * s_age_sq))
-          * exp(-Sq(Z_ax[I_Z]) / (2. * s_Z_sq));
+      rc[I_age * N_Z + I_Z] =
+            exp(-Sq(age_ax[I_age] - c_age) / (2. * s_age_sq))
+          * exp(-Sq(Z_ax[I_Z] - c_Z) / (2. * s_Z_sq));
 
   // normalize to sigma
   int N_size = N_age * N_Z, I_px;

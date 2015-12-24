@@ -1,0 +1,2 @@
+panofit:
+	cd src; make
