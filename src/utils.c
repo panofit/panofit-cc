@@ -47,6 +47,14 @@ print_head(double * arr, int n)
 }
 
 int
+print_arr(double * arr, int n)
+{
+  int I;
+  FOREACH(I, n) printf("%u %e\n", I, arr[I]);
+  printf("\n");
+}
+
+int
 draw_image(const char * name, int N_i, int N_j)
 {
   char cmd_line[128];

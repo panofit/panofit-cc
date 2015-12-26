@@ -11,6 +11,7 @@ int make_grid(double *, double *, int, int, double *, double *);
 int save_array(double *, int, const char *);
 
 // debug functions
+int print_arr(double *, int);
 int print_head(double *, int);
 int draw_image(const char *, int, int);
 int draw_image_log(const char *, int, int);

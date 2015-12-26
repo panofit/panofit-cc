@@ -7,21 +7,20 @@
 #include "assert.h"
 
 spectrum *
-synthesis(recipe * rcp_t, spec_lib * lib_t, double x, double y)
+synthesis(recipe * rcp_t, spec_lib * lib_t)
 {
   // make a new spectrum
   spectrum * sp_t = make_empty_spectrum(lib_t);
 
   // call noalloc
-  synthesis_noalloc(rcp_t, lib_t, x, y, sp_t);
+  synthesis_noalloc(rcp_t, lib_t, sp_t);
 
   // return spectrum
   return sp_t;
 }
 
 int
-synthesis_noalloc(recipe * rcp_t, spec_lib * lib_t,
-    double x, double y, spectrum * sp_t)
+synthesis_noalloc(recipe * rcp_t, spec_lib * lib_t, spectrum * sp_t)
 {
   // sanity check
   assert(lib_t -> N_spx == sp_t -> N_spx),

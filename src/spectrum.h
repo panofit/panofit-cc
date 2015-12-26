@@ -33,6 +33,9 @@ struct _spectrum
   // array to hold flux and err
   double * flux, * err;
 
+  // mask (bad pixels / lines), 1: valid, 0; masked.
+  int * mask;
+
   // wavelength / wavenumber
   double * wl;
 
@@ -45,5 +48,8 @@ int free_spectrum(spectrum *);
 
 spec_lib * load_spec_lib_raw(const char *);
 int free_spec_lib(spec_lib *);
+
+spectrum * make_empty_spectrum_as(spectrum *);
+int resample_spectrum(spectrum *, spectrum *);
 
 #endif

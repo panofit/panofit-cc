@@ -28,6 +28,7 @@ typedef struct _param_set
   // pointers to parameters
   double ** par;
   double ** par_lim;
+  int ** is_const;
 
 } param_set;
 

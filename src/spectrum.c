@@ -2,6 +2,9 @@
 #include "utils.h"
 #include "spectrum.h"
 
+#include "gsl/gsl_errno.h"
+#include "gsl/gsl_spline.h"
+
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
@@ -19,13 +22,17 @@ make_empty_spectrum(spec_lib * lib_t)
 
   // allocate space for flux and err
   sp_t -> flux = TALLOC(double, lib_t -> N_spx),
-  sp_t -> err = TALLOC(double, lib_t -> N_spx);
+  sp_t -> err  = TALLOC(double, lib_t -> N_spx),
+  sp_t -> mask = TALLOC(int, lib_t -> N_spx);
 
   // fill with zeros
   int I_spx;
-  for(I_spx = 0; I_spx < lib_t -> N_spx; ++ I_spx)
-    sp_t -> flux[I_spx] = 0., sp_t -> err[I_spx] = 0.;
-    
+  //for(I_spx = 0; I_spx < lib_t -> N_spx; ++ I_spx)
+  FOREACH(I_spx, (lib_t -> N_spx))
+    sp_t -> flux[I_spx] = 0.,
+    sp_t -> err[I_spx]  = 0.,
+    sp_t -> mask[I_spx] = 1 ;
+
   // return the pointer
   return sp_t;
 }
@@ -90,4 +97,55 @@ int free_spec_lib(spec_lib * lib_t)
   free(lib_t -> data);
 
   return 0;
+}
+
+spectrum *
+make_empty_spectrum_as(spectrum * sp_i)
+{
+  int I_wl;
+
+  // allocate empty
+  spectrum * sp_t = TALLOC(spectrum, 1);
+  sp_t -> flux = TALLOC(double, sp_i -> N_spx),
+  sp_t -> err = TALLOC(double, sp_i -> N_spx),
+  sp_t -> mask = TALLOC(int, sp_i -> N_spx);
+
+  // copy parameters
+  sp_t -> N_spx = sp_i -> N_spx;
+
+  // wavelength
+  sp_t -> shared_wl = sp_i -> shared_wl;
+  if(! (sp_i -> shared_wl))
+    {
+      sp_t -> wl = TALLOC(double, sp_i -> N_spx);
+      FOREACH(I_wl, sp_i -> N_spx)
+        sp_t -> wl[I_wl] = sp_i -> wl[I_wl];
+    }
+
+  // copy mask
+  FOREACH(I_wl, sp_i -> N_spx)
+    sp_t -> mask[I_wl] = sp_i -> mask[I_wl];
+
+  return sp_t;
+}
+
+int
+resample_spectrum(spectrum * sp_t, spectrum sp_i)
+{
+  // create intepolator
+  gsl_interp_accel * ac_t = gsl_interp_accel_alloc();
+  gsl_spline * spl_t = gsl_spline_alloc(gsl_interp_cspline, sp_i -> N_spx);
+  gsl_spline_init(spl_t, sp_i -> wl, sp_i -> flux, sp_i -> N_spx);
+
+  // do interpolation
+  int I_spx;
+  FOREACH(I_spx, sp_t -> N_spx)
+    sp_t -> flux[I_spx] = gsl_spline_eval(spl_t, sp_t -> wl[I_spx], ac_t);
+
+  // fill mask area
+  // TODO
+
+  // free interpolator
+  gsl_spline_free(spl_t);
+  gsl_interp_accel_free(ac_t);
 }
