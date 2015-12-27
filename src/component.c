@@ -48,7 +48,7 @@ make_base_component(int N_par)
 
 int free_component(component * cp_t)
 {
-  (cp_t -> kill)(cp_t); free(cp_t);
+  (cp_t -> kill)(cp_t); free(cp_t); cp_t = NULL;
   return 0;
 }
 

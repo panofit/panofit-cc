@@ -46,6 +46,8 @@ free_spectrum(spectrum * sp_t)
   if(! (sp_t -> is_shared_wl))
     free(sp_t -> wl);
 
+  sp_t = NULL;
+
   return 0;
 }
 
@@ -95,6 +97,7 @@ int free_spec_lib(spec_lib * lib_t)
   free(lib_t -> Z_ax),
   free(lib_t -> age_ax),
   free(lib_t -> data);
+  lib_t =  NULL;
 
   return 0;
 }
@@ -148,4 +151,16 @@ resample_spectrum(spectrum * sp_t, spectrum sp_i)
   // free interpolator
   gsl_spline_free(spl_t);
   gsl_interp_accel_free(ac_t);
+}
+
+spectrum *
+specfilter_gaussian_evenspacing(spectrum * sp_i, double lw, int N_spx_c)
+{
+  // make empty spectrum
+  spectrum * sp_t = make_empty_spectrum_as(sp_i);
+
+  // do gaussian filter
+  // TODO, 1d horizontal gaussian smoothing.
+
+  return sp_t;
 }
