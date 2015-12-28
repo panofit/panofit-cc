@@ -28,7 +28,13 @@ typedef struct _param_set
   // pointers to parameters
   double ** par;
   double ** par_lim;
-  int ** is_const;
+  int    ** is_const;
+
+  // are parameter arrays shared with the model?
+  int is_shared;
+
+  // pointer to the associated model
+  model * shared_with;
 
 } param_set;
 

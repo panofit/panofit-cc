@@ -27,11 +27,17 @@ typedef struct _spectrum spectrum;
 
 struct _spectrum
 {
+  // id (not always necessary)
+  int id;
+
   // number of spectral pixels
   int N_spx;
 
-  // array to hold flux and err
-  double * flux, * err;
+  // coords on the plane (not always necessary)
+  double X, Y;
+
+  // array to hold flux, err and sum(log_s)
+  double * flux, * err, sum_logs;
 
   // mask (bad pixels / lines), 1: valid, 0; masked.
   int * mask;

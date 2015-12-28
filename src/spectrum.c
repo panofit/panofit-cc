@@ -18,7 +18,9 @@ make_empty_spectrum(spec_lib * lib_t)
   // set properties
   sp_t -> N_spx = lib_t -> N_spx,
   sp_t -> wl = lib_t -> wl,
-  sp_t -> is_shared_wl = 1;
+  sp_t -> is_shared_wl = 1,
+  sp_t -> X = 0., sp_t -> Y = 0.,
+  sp_t -> id = -1;
 
   // allocate space for flux and err
   sp_t -> flux = TALLOC(double, lib_t -> N_spx),
@@ -27,7 +29,6 @@ make_empty_spectrum(spec_lib * lib_t)
 
   // fill with zeros
   int I_spx;
-  //for(I_spx = 0; I_spx < lib_t -> N_spx; ++ I_spx)
   FOREACH(I_spx, (lib_t -> N_spx))
     sp_t -> flux[I_spx] = 0.,
     sp_t -> err[I_spx]  = 0.,
@@ -46,7 +47,7 @@ free_spectrum(spectrum * sp_t)
   if(! (sp_t -> is_shared_wl))
     free(sp_t -> wl);
 
-  sp_t = NULL;
+  free(sp_t); sp_t = NULL;
 
   return 0;
 }
@@ -115,6 +116,7 @@ make_empty_spectrum_as(spectrum * sp_i)
 
   // copy parameters
   sp_t -> N_spx = sp_i -> N_spx;
+  sp_t -> id = sp_i -> id;
 
   // wavelength
   sp_t -> shared_wl = sp_i -> shared_wl;

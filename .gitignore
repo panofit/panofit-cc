@@ -1,3 +1,9 @@
 *.o
 *.dat
 *.tmp
+*.fits
+*.npy
+*.npz
+*.pyc
+*.dbg
+*.sig

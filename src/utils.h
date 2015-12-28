@@ -5,6 +5,7 @@
 // useful macro defs
 #define TALLOC(_DATA_TYPE, _BLOCK_NUM) ((_DATA_TYPE *) malloc(sizeof(_DATA_TYPE) * (_BLOCK_NUM)))
 #define FOREACH(IDX, NUM) for(IDX = 0; IDX < NUM; ++ IDX)
+#define PI 3.1415926535897932
 
 int make_linear(double *, int, double, double);
 int make_grid(double *, double *, int, int, double *, double *);
