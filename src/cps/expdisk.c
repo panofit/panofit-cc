@@ -29,6 +29,13 @@
 
 #define Sq(X) ((X) * (X))
 
+const char * expdisk_par_names[] =
+  {
+    "I_c", "X_c", "Y_c", "phi", "a", "q", "c",
+    "Mu_Age_c", "Std_Age_c", "Mu_M_c", "Std_M_c",
+    "Mu_Age_k", "Std_Age_k", "Mu_M_k", "Std_M_k"
+  };
+
 component *
 cps_expdisk_2d(double * par, double * par_lim, int * is_const,
     const char * name)
@@ -53,8 +60,9 @@ cps_expdisk_2d(double * par, double * par_lim, int * is_const,
     if(! *(is_const + I_par)) ++ N_fp;
   cp_t -> N_fp = N_fp;
 
-  // set name
+  // set component nane and param name
   strcpy(cp_t -> name, name);
+  cp_t -> par_name = (char **) expdisk_par_names;
 
   // set function headers
   cp_t -> sigma = & _cps_expdisk_2d_sigma;

@@ -58,7 +58,9 @@ get_assoc_param_set(model * m_t)
   ps_t -> N_par = TALLOC(int, m_t -> N_cps),
   ps_t -> par = TALLOC(double *, m_t -> N_cps),
   ps_t -> par_lim = TALLOC(double *, m_t -> N_cps),
-  ps_t -> is_const = TALLOC(int *, m_t -> N_cps);
+  ps_t -> is_const = TALLOC(int *, m_t -> N_cps),
+  ps_t -> par_name = TALLOC(char **, m_t -> N_cps),
+  ps_t -> name = TALLOC(char *, m_t -> N_cps);
 
   // write number of parameters and set pointers
   int I_cp, N_cps = m_t -> N_cps;
@@ -66,11 +68,14 @@ get_assoc_param_set(model * m_t)
     ps_t -> N_par[I_cp] = m_t -> cps[I_cp] -> N_par,
     ps_t -> par[I_cp] = m_t -> cps[I_cp] -> par,
     ps_t -> par_lim[I_cp] = m_t -> cps[I_cp] -> par_lim,
-    ps_t -> is_const[I_cp] = m_t -> cps[I_cp] -> is_const;
+    ps_t -> is_const[I_cp] = m_t -> cps[I_cp] -> is_const,
+    ps_t -> par_name[I_cp] = (m_t -> cps[I_cp]) -> par_name,
+    ps_t -> name[I_cp] = (m_t -> cps[I_cp]) -> name;
 
   // set other properties
-  ps_t -> N_cps = N_cps;
-  ps_t -> is_shared = 1;
+  ps_t -> N_cps = N_cps,
+  ps_t -> is_shared = 1,
+  ps_t -> shared_with = m_t;
 
   // return
   return ps_t;
@@ -86,23 +91,85 @@ make_param_set_for(model * m_t)
   ps_t -> N_par = TALLOC(int, m_t -> N_cps),
   ps_t -> par = TALLOC(double *, m_t -> N_cps),
   ps_t -> par_lim = TALLOC(double *, m_t -> N_cps),
-  ps_t -> is_const = TALLOC(int *, m_t -> N_cps);
+  ps_t -> is_const = TALLOC(int *, m_t -> N_cps),
+  ps_t -> par_name = TALLOC(char **, m_t -> N_cps),
+  ps_t -> name = TALLOC(char *, m_t -> N_cps);
 
-  // FIXME
+  // allocate memory and copy parameters
+  int I_cp, N_cps = m_t -> N_cps;
+  FOREACH(I_cp, N_cps)
+    ps_t -> N_par[I_cp] = m_t -> cps[I_cp] -> N_par,
+    ps_t -> par[I_cp] = TALLOC(double, m_t -> cps[I_cp] -> N_par),
+    ps_t -> par_lim[I_cp] = TALLOC(double, 2 * (m_t -> cps[I_cp] -> N_par)),
+    ps_t -> is_const[I_cp] = TALLOC(int, m_t -> cps[I_cp] -> N_par);
+
+  FOREACH(I_cp, N_cps)
+    memcpy(ps_t -> par[I_cp], m_t -> cps[I_cp] -> par,
+        (m_t -> cps[I_cp] -> N_par) * sizeof(double)),
+    memcpy(ps_t -> par_lim[I_cp], m_t -> cps[I_cp] -> par_lim,
+        (m_t -> cps[I_cp] -> N_par) * sizeof(double) * 2),
+    memcpy(ps_t -> is_const[I_cp], m_t -> cps[I_cp] -> is_const,
+        (m_t -> cps[I_cp] -> N_par) * sizeof(int));
+
+  // copy name of param
+  FOREACH(I_cp, N_cps)
+    ps_t -> name[I_cp] = (m_t -> cps[I_cp]) -> name,
+    ps_t -> par_name[I_cp] = (m_t -> cps[I_cp]) -> par_name;
+
+  // set other properties
+  ps_t -> N_cps = N_cps,
+  ps_t -> is_shared = 0,
+  ps_t -> shared_with = m_t;
+
+  // return
+  return ps_t;
 }
 
-/*
-  TODO: in this way?
-    param_set * make_param_set_for (model *),
-    param_set * get_assoc_param_set (model *),
-    int read_param_from (param_set *, param_set *),
-    int apply_param_set (param_set *, param_set *)
-*/
+int
+copy_param_set(param_set * ps_d, param_set * ps_i)
+{
+  // check if destination is independent
+  if(ps_d -> is_shared) return 1;
+  if(ps_d -> N_cps != ps_i -> N_cps) return -1;
+  // if(ps_d -> shared_with != ps_i -> shared_with) return -4;
+
+  // make deep copy
+  int I_cp, N_cps = ps_i -> N_cps;
+  FOREACH(I_cp, N_cps)
+    {
+      // if number of parameter match
+      if(ps_i -> N_par[I_cp] != ps_d -> N_par[I_cp]) return -2;
+
+      memcpy(ps_d -> par[I_cp], ps_d -> par[I_cp],
+          (ps_i -> N_par[I_cp]) * sizeof(double)),
+      memcpy(ps_d -> par_lim[I_cp], ps_d -> par_lim[I_cp],
+          (ps_i -> N_par[I_cp]) * sizeof(double) * 2),
+      memcpy(ps_d -> is_const[I_cp], ps_d -> is_const[I_cp],
+          (ps_i -> N_par[I_cp]) * sizeof(int));
+    }
+
+  // set other paramters
+  FOREACH(I_cp, N_cps)
+    ps_d -> name[I_cp] = ps_i -> name[I_cp],
+    ps_d -> par_name[I_cp] = ps_i -> par_name[I_cp];
+
+  return 0;
+}
+
 
 int
 free_param_set(param_set * ps_t)
 {
+  // deep-copy or associated
+  if(!(ps_t -> is_shared))
+    {
+      int I_cp, N_cps = ps_t -> N_cps;
+      FOREACH(I_cp, N_cps)
+        free(ps_t -> par[I_cp]), free(ps_t -> par_lim[I_cp]),
+        free(ps_t -> is_const[I_cp]);
+    }
+
   free(ps_t -> N_par), free(ps_t -> par), free(ps_t -> par_lim),
-  free(ps_t -> is_const); free(ps_t);
+  free(ps_t -> is_const), free(ps_t -> par_name), free(ps_t);
   return 0;
 }

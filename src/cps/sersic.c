@@ -28,6 +28,13 @@
 
 #define Sq(X) ((X) * (X))
 
+const char * sersic_par_names[] =
+  {
+    "I_e", "X_c", "Y_c", "phi", "R_s", "n", "q", "c",
+    "Mu_Age_c", "Std_Age_c", "Mu_M_c", "Std_M_c",
+    "Mu_Age_k", "Std_Age_k", "Mu_M_k", "Std_M_k"
+  };
+
 // make a sersic component
 component *
 cps_sersic_2d(double * par, double * par_lim, int * is_const, const char * name)
@@ -52,8 +59,9 @@ cps_sersic_2d(double * par, double * par_lim, int * is_const, const char * name)
     if(! *(is_const + I_par)) ++ N_fp;
   cp_t -> N_fp = N_fp;
 
-  // give name
-  strcpy(cp_t -> name, name);
+  // give names to component and parameters
+  strcpy(cp_t -> name, name),
+  cp_t -> par_name = (char **) sersic_par_names;
 
   // set function headers
   cp_t -> sigma = & _cps_sersic_2d_sigma;

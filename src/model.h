@@ -22,6 +22,9 @@ typedef struct _param_set
   // number of components
   int N_cps;
 
+  // name of components
+  char ** name;
+
   // number of parameters, for each component
   int * N_par;
 
@@ -29,6 +32,7 @@ typedef struct _param_set
   double ** par;
   double ** par_lim;
   int    ** is_const;
+  char  *** par_name;
 
   // are parameter arrays shared with the model?
   int is_shared;
@@ -40,6 +44,9 @@ typedef struct _param_set
 
 model * make_model(const char * name, int N_cps, ...);
 int free_model(model *, int);
-param_set * get_param_set(model * m_t);
+param_set * get_assoc_param_set(model *);
+param_set * make_param_set_for(model *);
+int copy_param_set(param_set *, param_set *);
+
 
 #endif // _MODEL_H

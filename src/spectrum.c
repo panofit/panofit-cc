@@ -119,8 +119,8 @@ make_empty_spectrum_as(spectrum * sp_i)
   sp_t -> id = sp_i -> id;
 
   // wavelength
-  sp_t -> shared_wl = sp_i -> shared_wl;
-  if(! (sp_i -> shared_wl))
+  sp_t -> is_shared_wl = sp_i -> is_shared_wl;
+  if(! (sp_i -> is_shared_wl))
     {
       sp_t -> wl = TALLOC(double, sp_i -> N_spx);
       FOREACH(I_wl, sp_i -> N_spx)
@@ -135,7 +135,7 @@ make_empty_spectrum_as(spectrum * sp_i)
 }
 
 int
-resample_spectrum(spectrum * sp_t, spectrum sp_i)
+resample_spectrum(spectrum * sp_t, spectrum * sp_i)
 {
   // create intepolator
   gsl_interp_accel * ac_t = gsl_interp_accel_alloc();

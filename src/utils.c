@@ -1,7 +1,38 @@
 
+#include "model.h"
+
 #include "stdio.h"
 #include "stdlib.h"
 #include "utils.h"
+
+#include "math.h"
+#include "float.h"
+
+// Gaussian random number.
+double
+rand_gauss()
+{
+  static double v_1, v_2, s;
+  static int p = 0;
+  double x;
+
+  if(p == 0)
+    {
+      do
+        {
+          double u_1 = (double) rand() / RAND_MAX;
+          double u_2 = (double) rand() / RAND_MAX;
+          v_1 = 2 * u_1 - 1, v_2 = 2 * u_2 - 1;
+          s = v_1 * v_2 + v_2 * v_2;
+        }
+      while(s >= 1 || s == 0);
+      x = v_1 * sqrt(-2 * log(s) / s);
+    }
+  else x = v_2 * sqrt(-2 * log(s) / s);
+
+  p = 1 - p;
+  return x;
+}
 
 int
 make_linear(double * arr, int N, double a, double b)
@@ -52,6 +83,35 @@ print_arr(double * arr, int n)
   int I;
   FOREACH(I, n) printf("%u %e\n", I, arr[I]);
   printf("\n");
+}
+
+int
+print_param_set(param_set * ps_t, int variable_only)
+{
+  // iterate over components
+  int N_cps = ps_t -> N_cps, I_cp;
+  FOREACH(I_cp, N_cps)
+    {
+      // print component name
+      printf("Component %u/%u: %s\n", I_cp + 1, N_cps, ps_t -> name[I_cp]);
+
+      // iterate over parameters, print names and values
+      int I_par, N_par = ps_t -> N_par[I_cp];
+      FOREACH(I_par, N_par)
+        {
+          if(!(I_par % 4)) printf("\n  "); // just formatting
+
+          // print with yellow text if variable
+          if(!((ps_t -> is_const[I_cp])[I_par]))
+            printf("%s: %f,  ",
+                (ps_t -> par_name[I_cp])[I_par], (ps_t -> par[I_cp])[I_par]);
+          else if(variable_only)
+            printf("\x1B[30m%s: %f\033[0m,  ",
+                (ps_t -> par_name[I_cp])[I_par], (ps_t -> par[I_cp])[I_par]);
+        }
+
+      printf("\n\n");
+    }
 }
 
 int

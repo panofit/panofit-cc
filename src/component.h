@@ -12,9 +12,10 @@ struct _component
   int type;
 
   // parameters
-  int N_par, N_fp;
+  int N_par, N_fp; // N of params, N of free params
   double * par, * par_lim;
   int * is_const;
+  char ** par_name;
 
   // workspace (if needed)
   void * ws;
