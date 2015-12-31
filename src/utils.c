@@ -8,30 +8,30 @@
 #include "math.h"
 #include "float.h"
 
-// Gaussian random number.
+#define Sq(X) ((X) * (X))
+
 double
 rand_gauss()
 {
-  static double v_1, v_2, s;
-  static int p = 0;
-  double x;
+  double        u, v, w, m;
+  static double x, y;
+  static int    p = 0;
 
-  if(p == 0)
+  if (p == 1) {p = !p; return (double) y;}
+
+  do
     {
-      do
-        {
-          double u_1 = (double) rand() / RAND_MAX;
-          double u_2 = (double) rand() / RAND_MAX;
-          v_1 = 2 * u_1 - 1, v_2 = 2 * u_2 - 1;
-          s = v_1 * v_2 + v_2 * v_2;
-        }
-      while(s >= 1 || s == 0);
-      x = v_1 * sqrt(-2 * log(s) / s);
+      u = -1. + ((double) rand () / RAND_MAX) * 2.;
+      v = -1. + ((double) rand () / RAND_MAX) * 2.;
+      w = Sq(u) + Sq(v);
     }
-  else x = v_2 * sqrt(-2 * log(s) / s);
+  while (w >= 1. || w == 0.);
 
-  p = 1 - p;
-  return x;
+  m = sqrt ((-2. * log (w)) / w);
+  x = u * m, y = v * m;
+  p = !p;
+
+  return (double) x;
 }
 
 int
@@ -102,11 +102,11 @@ print_param_set(param_set * ps_t, int variable_only)
           if(!(I_par % 4)) printf("\n  "); // just formatting
 
           // print with yellow text if variable
-          if(!((ps_t -> is_const[I_cp])[I_par]))
-            printf("%s: %f,  ",
+          if(!((ps_t -> is_const[I_cp])[I_par])) // variable
+            printf("\x1B[32m%s: %f\033[0m,  ",
                 (ps_t -> par_name[I_cp])[I_par], (ps_t -> par[I_cp])[I_par]);
-          else if(variable_only)
-            printf("\x1B[30m%s: %f\033[0m,  ",
+          else if(! variable_only)
+            printf("%s: %f,  ",
                 (ps_t -> par_name[I_cp])[I_par], (ps_t -> par[I_cp])[I_par]);
         }
 

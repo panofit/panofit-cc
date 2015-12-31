@@ -60,7 +60,8 @@ get_assoc_param_set(model * m_t)
   ps_t -> par_lim = TALLOC(double *, m_t -> N_cps),
   ps_t -> is_const = TALLOC(int *, m_t -> N_cps),
   ps_t -> par_name = TALLOC(char **, m_t -> N_cps),
-  ps_t -> name = TALLOC(char *, m_t -> N_cps);
+  ps_t -> name = TALLOC(char *, m_t -> N_cps),
+  ps_t -> check = malloc(sizeof(int (**)(double const *)) * (m_t -> N_cps));
 
   // write number of parameters and set pointers
   int I_cp, N_cps = m_t -> N_cps;
@@ -70,7 +71,8 @@ get_assoc_param_set(model * m_t)
     ps_t -> par_lim[I_cp] = m_t -> cps[I_cp] -> par_lim,
     ps_t -> is_const[I_cp] = m_t -> cps[I_cp] -> is_const,
     ps_t -> par_name[I_cp] = (m_t -> cps[I_cp]) -> par_name,
-    ps_t -> name[I_cp] = (m_t -> cps[I_cp]) -> name;
+    ps_t -> name[I_cp] = (m_t -> cps[I_cp]) -> name,
+    ps_t -> check[I_cp] = (m_t -> cps[I_cp]) -> check;
 
   // set other properties
   ps_t -> N_cps = N_cps,
@@ -93,7 +95,8 @@ make_param_set_for(model * m_t)
   ps_t -> par_lim = TALLOC(double *, m_t -> N_cps),
   ps_t -> is_const = TALLOC(int *, m_t -> N_cps),
   ps_t -> par_name = TALLOC(char **, m_t -> N_cps),
-  ps_t -> name = TALLOC(char *, m_t -> N_cps);
+  ps_t -> name = TALLOC(char *, m_t -> N_cps),
+  ps_t -> check = malloc(sizeof(int (**)(double const *)) * (m_t -> N_cps));
 
   // allocate memory and copy parameters
   int I_cp, N_cps = m_t -> N_cps;
@@ -114,7 +117,8 @@ make_param_set_for(model * m_t)
   // copy name of param
   FOREACH(I_cp, N_cps)
     ps_t -> name[I_cp] = (m_t -> cps[I_cp]) -> name,
-    ps_t -> par_name[I_cp] = (m_t -> cps[I_cp]) -> par_name;
+    ps_t -> par_name[I_cp] = (m_t -> cps[I_cp]) -> par_name,
+    ps_t -> check[I_cp] = (m_t -> cps[I_cp]) -> check;
 
   // set other properties
   ps_t -> N_cps = N_cps,
@@ -151,7 +155,8 @@ copy_param_set(param_set * ps_d, param_set * ps_i)
   // set other paramters
   FOREACH(I_cp, N_cps)
     ps_d -> name[I_cp] = ps_i -> name[I_cp],
-    ps_d -> par_name[I_cp] = ps_i -> par_name[I_cp];
+    ps_d -> par_name[I_cp] = ps_i -> par_name[I_cp],
+    ps_d -> check[I_cp] = ps_i -> check[I_cp];
 
   return 0;
 }
@@ -170,6 +175,7 @@ free_param_set(param_set * ps_t)
     }
 
   free(ps_t -> N_par), free(ps_t -> par), free(ps_t -> par_lim),
-  free(ps_t -> is_const), free(ps_t -> par_name), free(ps_t);
+  free(ps_t -> is_const), free(ps_t -> par_name), free(ps_t -> check);
+  free(ps_t);
   return 0;
 }

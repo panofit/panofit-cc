@@ -34,6 +34,9 @@ typedef struct _param_set
   int    ** is_const;
   char  *** par_name;
 
+  // parameter checkers
+  int (** check)(double const *);
+
   // are parameter arrays shared with the model?
   int is_shared;
 
