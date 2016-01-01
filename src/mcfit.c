@@ -105,7 +105,8 @@ metropolis_sampling(model * m_t, dataset * ds_t, param_set * ps_t, int N_steps,
   // sanity check
 
   // useful variables
-  int I_step, I_sp_st, N_sp_st = ds_t -> N_spec_st;
+  int I_step, I_sp, I_sp_st, N_sp_st = ds_t -> N_spec_st, N_spx;
+  spec_st * stack_t; spectrum * spec_t;
 
   // get prepared
   param_set * ps_current = make_param_set_for(m_t),
@@ -118,6 +119,17 @@ metropolis_sampling(model * m_t, dataset * ds_t, param_set * ps_t, int N_steps,
 
       // test likelihood: spectra, iterate over spec stacks
       FOREACH(I_sp_st, N_sp_st)
+        {
+          // which stack?
+          stack_t = ds_t -> spec_st[I_sp_st];
+          N_spec = stack_t -> N_spec, N_spx = stack_t -> N_spx;
+
+          // iterate over individual spectra
+          FOREACH(I_sp, N_spec)
+            {
+              //
+            }
+        }
     }
     // generate new solution
     // test likelihood
