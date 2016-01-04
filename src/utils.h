@@ -10,6 +10,7 @@ typedef struct _param_set param_set;
 #define PI 3.1415926535897932
 
 double rand_gauss();
+double rand_uniform();
 
 int make_linear(double *, int, double, double);
 int make_grid(double *, double *, int, int, double *, double *);

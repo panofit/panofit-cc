@@ -34,6 +34,12 @@ rand_gauss()
   return (double) x;
 }
 
+double
+rand_uniform()
+{
+  return ((double) rand () / RAND_MAX);
+}
+
 int
 make_linear(double * arr, int N, double a, double b)
 {

@@ -4,45 +4,16 @@
 #include "spectrum.h"
 #include "image.h"
 #include "model.h"
+#include "recipe.h"
+#include "synthesis.h"
+#include "mcfit.h"
+#include "bayesian.h"
 
 #include "assert.h"
 #include "math.h"
 #include "stdio.h"
 
 #define Sq(X) ((X) * (X))
-
-// calculates likelihood of model spectrum
-double
-spec_logL(spectrum * mock_sp, spectrum * obs_sp)
-{
-  // check
-  assert(mock_sp -> N_spx == obs_sp -> N_spx);
-
-  // useful variables
-  int I_spx, N_spx = obs_sp -> N_spx;
-  double log_L = 0., * mock_flux = mock_sp -> flux,
-    * obs_flux = obs_sp -> flux, * obs_err = obs_sp -> err;
-  int * mock_mask = mock_sp -> mask, * obs_mask = obs_sp -> mask;
-  // FIXME mock_mask is not used now since spec_lib doesn't hold the mask. \
-           I'm assuming a spectral library without bad points.
-
-  // calculate chi_sq and turn into log_L
-  FOREACH(I_spx, N_spx)
-    log_L += Sq((obs_flux[I_spx] - mock_flux[I_spx]) / obs_err[I_spx])
-          * (double)(obs_mask[I_spx]);
-  log_L *= -0.5;
-
-  // add the pre-computed const terms // optional
-  log_L += obs_sp -> sum_logs;
-
-  return log_L;
-}
-
-double
-img_logL(image * mock_img, image * obs_img)
-{
-  return 0.; // TODO TODO
-}
 
 // generate a trial solution for MCMC fitting. \
    ps_d for destination, ps_s for previous solution, T for temperature.
@@ -106,16 +77,32 @@ metropolis_sampling(model * m_t, dataset * ds_t, param_set * ps_t, int N_steps,
 
   // useful variables
   int I_step, I_sp, I_sp_st, N_sp_st = ds_t -> N_spec_st, N_spx;
-  spec_st * stack_t; spectrum * spec_t;
+  spec_st * stack_t; spectrum * spec_t; recipe * rcp_t;
+  int if_accept;
 
-  // get prepared
+  // parameter sets
   param_set * ps_current = make_param_set_for(m_t),
-            * ps_trial = make_param_set_for(m_t);
+            * ps_trial = make_param_set_for(m_t),
+            * ps_best = make_param_set_for(m_t);
+  param_set * ps_param = get_assoc_param_set(m_t);
 
+  // corresponding likelihood
+  double ln_L_current = -DBL_MAX, ln_L_trial, ln_L_best;
+
+  // initialize: current = ps_param
+  copy_param_set(ps_current, ps_param);
+
+  // MCMC loop
   FOREACH(I_step, N_steps)
     {
+      // new step, clear temp variables.
+      ln_L_trial = 0;
+
       // generate new solution from existing solution
-      sample_param_set(ps_new, ps_t, T);
+      sample_param_set(ps_trial, ps_current, T);
+
+      // write new param set to the model
+      copy_param_set(ps_param, ps_trial);
 
       // test likelihood: spectra, iterate over spec stacks
       FOREACH(I_sp_st, N_sp_st)
@@ -124,17 +111,60 @@ metropolis_sampling(model * m_t, dataset * ds_t, param_set * ps_t, int N_steps,
           stack_t = ds_t -> spec_st[I_sp_st];
           N_spec = stack_t -> N_spec, N_spx = stack_t -> N_spx;
 
+          // make mock spectrum object
+          spectrum * mock_sp_t =
+              make_empty_spectrum_as((stack_t -> spec[I_sp])[0]);
+
           // iterate over individual spectra
           FOREACH(I_sp, N_spec)
             {
-              //
+              // which spectrum?
+              spec_t = stack_t -> spec[I_sp];
+
+              // generate recipe for it.
+              sample_recipe_noalloc(m_t, spec_t -> X, spec_t -> Y, rcp_t);
+
+              // generate mock spectrum at this point
+              synthesis_noalloc(rcp_t, stack_t -> splib, mock_sp_t);
+
+              // calculate likelihood
+              ln_L_trial += spec_ln_L(mock_sp_t, spec_t);
             }
+
+          // TODO free mock spectrum object
+          free_spectrum(mock_sp_t);
         }
+
+      // iterate over images;
+      // FOREACH(...)
+
+      // accept or not?
+      if(ln_L_trial > ln_L_current) if_accept = 1;
+      else if_accept = rand_uniform() < exp(ln_L_trial - ln_L_current);
+
+      if(if_accept)
+        {
+          // DEBUG
+          print_param_set(param_set * param_trial, 1);
+
+          // TODO: write chain
+
+          // TODO: write log
+
+          // copy the new solution into current
+          copy_param_set(param_current, param_trial);
+          ln_L_current = ln_L_trial;
+        }
+      else
+        {
+          // DEBUG
+          print_param_set(param_set * param_trial, 1);
+
+          // TODO: write log
+
+          // rewind I_step
+          -- I_step;
+        }
+
     }
-    // generate new solution
-    // test likelihood
-    // accept or reject?
-      // accept: write log,
-      //         if best solution?
-    // next step
 }

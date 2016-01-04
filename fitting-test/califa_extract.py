@@ -45,9 +45,15 @@ def extract_califa_cube(fname, output_fname):
   id_valid = []
   for I_ra, I_dec in itt.product(range(N_ra), range(N_dec)):
     if np.sum(flux[:, I_dec, I_ra]) != 0.: id_valid.append((I_ra, I_dec))
+    # if np.sum(err[:, I_dec, I_ra]) < 1.e10 * 300: id_valid.append((I_ra, I_dec))
 
-  '''
+  #''' # DEBUG
   print "N. of valid pixels", len(id_valid)
+
+  # plot spatial distribution of valid spaxels
+  id_valid = np.array(id_valid)
+  plt.scatter(ra_ax[id_valid[:, 0]], dec_ax[id_valid[:, 1]]), plt.show()
+
   sys.exit()
   #'''
 
@@ -81,7 +87,16 @@ def extract_califa_cube(fname, output_fname):
 
 if __name__ == '__main__':
 
+  #'''
+  # NGC 1
   extract_califa_cube("./califa_sample/NGC0001.V1200.rscube.fits", "./NGC0001/NGC0001.V1200.dat")
   extract_califa_cube("./califa_sample/NGC0001.V500.rscube.fits",  "./NGC0001/NGC0001.V500.dat")
+  #'''
+
+  # NGC 171
+  '''
+  extract_califa_cube("./califa_sample/NGC0171.V1200.rscube.fits", "./NGC0171/NGC0171.V1200.dat")
+  extract_califa_cube("./califa_sample/NGC0171.V500.rscube.fits",  "./NGC0171/NGC0171.V500.dat")
+  '''
 
 # ioAlWyKDXfyV1MBSN4m4
