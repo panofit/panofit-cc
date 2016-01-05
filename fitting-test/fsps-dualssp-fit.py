@@ -4,10 +4,9 @@
   Fit CALIFA V500 spectral cube of NGC 1 with two components (proof of concept)
   YJ Qin, Jan 2016 @ Shanghai
 
-  Parameters to optimize: sersic_n, sersic_re, sersic_Ie,  sersic_phi,
-                          sersic_q, sersic_c,  sersic_age,
-                          exp_Ic,   exp_h,     exp_phi,    exp_q,
-                          exp_c,    exp_age,
+  Parameters to optimize: sersic_n,   sersic_re,  sersic_Ie,  sersic_phi, sersic_q
+                          sersic_c,   sersic_age, exp_Ic,     exp_h,      exp_phi,
+                          exp_q,      exp_c,      exp_age,
   with a bounded minimization solver.
 
   First run [tnc solver]: (looks reasonable)
@@ -19,6 +18,11 @@
     0.86428252   2.7846034  -15.36964374  -2.22694922   0.80212827
     1.06718218   1.01979302 -11.08551644   9.79371104  -2.06361907
     0.98261746   2.42270186   0.32113472
+
+  Third run [diff-evo]:
+    0.01170914   6.89123059  10.92779896   3.02595948   0.68800141
+    0.12277318  -0.77716597 -10.09690454   2.38735419   1.95948294
+    0.31298667   3.12340962   1.1
 '''
 
 # specify the name of the data cube
@@ -48,7 +52,8 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
       exp_Ic, exp_h, exp_phi, exp_q, exp_c, exp_age = par
   id_a, id_b = wl_cut_idx
 
-  print "Target function called with param:", par
+  #print "Target function called with param:", par
+  for ipar in par: print ipar,
 
   # calculate d_n for sersic component
   ek1, ek2, ek3, ek4, ek5, ek6 = 3., -1. / 3., 8. / 1215., \
@@ -101,7 +106,7 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
 
     # find chi_sq of this spectra
     chi_sq_i = ((flux_i - flux_model) / err_i) ** 2
-    chi_sq_i[~np.isfinite(chi_sq_i)] = 0.
+    chi_sq_i[~np.isfinite(chi_sq_i)] = 0. # mask out nan and inf
 
     # write chi_sq of this spectrum
     chi_sq[id_spec] = chi_sq_i.sum()
@@ -109,7 +114,8 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
   # return a total chi_sq
   chi_sq_sum = np.sum(chi_sq)
 
-  print "  Target function gets chi_sq:", chi_sq_sum, "\n"
+  # print "  Target function gets chi_sq:", chi_sq_sum, "\n"
+  print chi_sq_sum
 
   return chi_sq_sum
 
@@ -139,15 +145,16 @@ def fit_datacube(filename):
   ra_ax  = -hlst[0].header['CRPIX1'] + hlst[0].header['CDELT1'] * np.arange(N_ra)
   dec_ax = -hlst[0].header['CRPIX2'] + hlst[0].header['CDELT2'] * np.arange(N_dec)
 
-  # data, err and mask
+  # data, err and mask, clear bad pixels
   flux, err, mask = hlst[0].data, hlst[1].data, hlst[2].data
+  flux[mask == 0] = np.nan
 
   # valid pixels
   valid_spaxels = []
 
   # for each spaxel, if valid, add into list
   for I_ra, I_dec in itt.product(range(N_ra), range(N_dec)):
-    if np.sum(flux[:, I_dec, I_ra]) != 0.: valid_spaxels.append((I_ra, I_dec))
+    if np.sum(mask[:, I_dec, I_ra]) > wl_ax.size * 0.8: valid_spaxels.append((I_ra, I_dec))
 
   # how many valid spaxels?
   print len(valid_spaxels), "spectra are valid in this cube."
@@ -198,7 +205,7 @@ def fit_datacube(filename):
   if min_solver == "tnc":
     par_opt, N_eval, ret = fmin_tnc(_min_objfc, init_guess,
         args = (spec_list, sp, (id_a, id_b)), approx_grad = True,
-        bounds = min_bounds)
+        bounds = min_bounds, messages = 0)
     print par_opt
 
   elif min_solver == "diffevo":
