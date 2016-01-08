@@ -199,7 +199,7 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
                 (1.e-1, 4.), (-3, 1.1)]
 
   # add some noise?
-  cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-3
+  cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-2
 
   #solver = "TNC"
   solver = "MCMC"
@@ -223,12 +223,12 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
              + 2.5e-3 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
 
     t0 = time.clock()
-    MC_sampler.run_mcmc(init_sol, 1500)
+    MC_sampler.run_mcmc(init_sol, 4500)
     t1 = time.clock()
     print "takes", t1 - t0, "sec to run."
 
     samples = MC_sampler.chain
-    np.save("mc_sampling_noisy.dat", samples)
+    np.save("mc_sampling_more_noisy-4500.dat", samples)
 
 if __name__ == "__main__":
 

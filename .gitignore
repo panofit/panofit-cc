@@ -8,3 +8,8 @@
 *.dbg
 *.sig
 *.tx
+*.pdf
+*.png
+*.jpg
+*.ps
+*.div

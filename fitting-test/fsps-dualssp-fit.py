@@ -29,7 +29,7 @@
 datacube_path = "./califa_sample/NGC0001.V500.rscube.fits"
 
 # specify the solver
-min_solver = "tnc"
+min_solver = "mcmc"
 
 # import everything
 import numpy as np
@@ -53,7 +53,6 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
   id_a, id_b = wl_cut_idx
 
   #print "Target function called with param:", par
-  for ipar in par: print ipar,
 
   # calculate d_n for sersic component
   ek1, ek2, ek3, ek4, ek5, ek6 = 3., -1. / 3., 8. / 1215., \
@@ -66,10 +65,10 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
 
   # interpolate ssp
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., sersic_age), peraa = True)
-  flux_s = flux_ssp[id_a: id_b + 1] * 1.e15
+  flux_s = flux_ssp[id_a: id_b + 1]
 
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., exp_age), peraa = True)
-  flux_e = flux_ssp[id_a: id_b + 1] * 1.e15
+  flux_e = flux_ssp[id_a: id_b + 1]
 
   # loop over spectra
   for id_spec, spec_t in enumerate(spec_list):
@@ -115,7 +114,9 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
   chi_sq_sum = np.sum(chi_sq)
 
   # print "  Target function gets chi_sq:", chi_sq_sum, "\n"
-  print chi_sq_sum
+  print "%E"%chi_sq_sum,
+  for ipar in par: print "% E"%ipar,
+  print ' '
 
   return chi_sq_sum
 
@@ -194,6 +195,9 @@ def fit_datacube(filename):
     exp_c,    exp_age,
   '''
 
+  #print np.nanmean(flux_new)
+  #sys.exit()
+
   # call fitting routine.
 
   init_guess = (2., 1., 1., 0., 0.5, 2., 1., 1., 1., 0., 0.5, 2., 0.)
@@ -215,14 +219,22 @@ def fit_datacube(filename):
 
   elif min_solver == "mcmc":
 
-    raise RuntimeError("MCMC solver doesn't work well.")
-
+    #raise RuntimeError("MCMC solver doesn't work well.")
     N_dim, N_walkers = 13, 32
+
+    # read init condition
+    init_guess = np.loadtxt("NGC1_V500_BD_Large_ptb.tx")
+    init_guess = init_guess[init_guess[:, 0].argsort()]
+    init_guess = init_guess[:N_walkers, 1:]
+
+    #init_guess = np.outer(np.ones(N_walkers), np.array(init_guess))
+    #init_guess = init_guess + np.random.randn(init_guess.size).reshape(init_guess.shape) * 5.e-1
+
     MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob,
         args = (spec_list, sp, (id_a, id_b), min_bounds))
-    MC_sampler.run_mcmc(init_guess, 1)
+    MC_sampler.run_mcmc(init_guess, 3500)
 
     samples = MC_sampler.chain
-    np.save("mc_sampling.dat", samples)
+    np.save("mc_sampling_ngc1_3500_chi-sq.dat", samples)
 
 if __name__ == "__main__": fit_datacube(datacube_path)
