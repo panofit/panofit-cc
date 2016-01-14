@@ -120,6 +120,7 @@ def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
 
   # array of single-spectrum chi_sq
   chi_sq = np.zeros((ra_ax.size, dec_ax.size), dtype = 'f8')
+  del_pc = np.zeros((ra_ax.size, dec_ax.size), dtype = 'f8')
 
   # interpolate ssp
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., sersic_age), peraa = True)
@@ -164,15 +165,17 @@ def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
 
       # write chi_sq of this spectrum
       chi_sq[I_ra, I_dec] = chi_sq_i.sum()
+      del_pc[I_ra, I_dec] = np.nanmean((flux_model - flux_obs) / flux_obs)
 
   # return a total chi_sq
   chi_sq_sum = np.sum(chi_sq)
 
   # print "  Target function gets chi_sq:", chi_sq_sum, "\n"
-  print "%e"%chi_sq_sum,
+  print "% e"%chi_sq_sum,
+  print "% e"%(np.nanmean(del_pc)),
 
   #print "Target function called with param:", par
-  for ipar in par: print "%e"%ipar,
+  for ipar in par: print "% e"%ipar,
   print " "
 
   return chi_sq_sum
@@ -186,7 +189,7 @@ def _log_prob(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, bounds):
     return -0.5 * _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb)
   else: return -np.inf
 
-def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
+def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
 
   # par_opt = (2.75, 4., 1., 0.3, 0.75, 2.25, 1.0, 0.8, 10., 0.3, 0.5, 2.0, 0.3)
 
@@ -198,9 +201,6 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
                 (-16., 16.), (1.e-2, 3.e2), (-np.pi, np.pi), (1.e-1, 1.),
                 (1.e-1, 4.), (-3, 1.1)]
 
-  # add some noise?
-  cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-2
-
   #solver = "TNC"
   solver = "MCMC"
 
@@ -209,26 +209,29 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
     par_fit, N_eval, ret = fmin_tnc(_min_objfc, init_guess,
         args = (cube, sp, ra_ax, dec_ax, wl_ida, wl_idb), approx_grad = True,
         bounds = min_bounds, messages = 0)
+    np.save(out_fname, par_fit)
     return par_fit
 
   if solver == 'MCMC':
 
     import emcee, time
 
+    # TODO: make SSP arrays so that target function can be pickled
+
     N_dim, N_walkers = 13, 32
     MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob,
         args = (cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, min_bounds))
 
     init_sol = np.outer(np.ones(N_walkers), np.array(init_guess)) \
-             + 2.5e-3 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
+             + 2.5e-2 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
 
     t0 = time.clock()
-    MC_sampler.run_mcmc(init_sol, 4500)
+    MC_sampler.run_mcmc(init_sol, 2500)
     t1 = time.clock()
     print "takes", t1 - t0, "sec to run."
 
     samples = MC_sampler.chain
-    np.save("mc_sampling_more_noisy-4500.dat", samples)
+    np.save(out_fname, samples)
 
 if __name__ == "__main__":
 
@@ -236,10 +239,27 @@ if __name__ == "__main__":
   sp = fsps.StellarPopulation(sfh = 0, sf_start = 0.)
   cube = generate_mock_datacube(par_opt, sp, ra_ax, dec_ax, wl_ida, wl_idb)
 
-  print np.mean(cube)
+  # mean flux of the cube?
+  # print cube.mean()
+
+  # add some noise?
+  # cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-2
+
+  # use Gauss filter to mimic PSF effect.
+  '''
+  from scipy.ndimage.filters import gaussian_filter
+  cube_new = np.zeros(cube.shape)
+  for I_wl in xrange(cube.shape[0]):
+    cube_new[I_wl, :, :] = gaussian_filter(cube[I_wl, :, :], 0.5)
+  #plt.imshow(np.rot90((cube[5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  #plt.imshow(np.rot90((cube_new[5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  '''
+
+  # simulate the effect of redshift
+  # wl_ida += 4; wl_idb += 4
 
   # fit it.
-  #par_fit = fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb)
+  par_fit = fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, "mc_sampling_simple")
 
   #print par_opt
   #print par_fit

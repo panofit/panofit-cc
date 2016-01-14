@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import corner
 
 N_dim, N_walkers = 13, 32
-chain_file = 'mc_sampling_more_noisy-4500.dat.npy'
+chain_file = 'chain.npy'
 par_opt = (2.75, 7.5, 0.3, 0.3, 0.75, 2.25, 1.0, 2., 7.5, 0.85, 0.5, 2.0, 0.3)
 par_names = ["Sersic n", "Bulge Re", "Bulge Ie", "Bulge phi", "Bulge b/a",
              "Bulge c", "Bulge SSP Age", "Disk I_c", "Disk R_h", "Disk phi",
