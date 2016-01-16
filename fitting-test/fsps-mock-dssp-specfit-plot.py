@@ -13,12 +13,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import corner
 
-N_dim, N_walkers = 13, 32
-chain_file = 'chain.npy'
+N_dim, N_walkers = 13, 26
+chain_file = './mock-dssp-fit-SNR-sc1/higher-resolution/mc_sampling_simple_weight-fixed.npy'
 par_opt = (2.75, 7.5, 0.3, 0.3, 0.75, 2.25, 1.0, 2., 7.5, 0.85, 0.5, 2.0, 0.3)
 par_names = ["Sersic n", "Bulge Re", "Bulge Ie", "Bulge phi", "Bulge b/a",
-             "Bulge c", "Bulge SSP Age", "Disk I_c", "Disk R_h", "Disk phi",
-             "Disk b/a", "Disk c", "Disk SSP Age"]
+             "Bulge c", "Bulge log(Age)", "Disk I_c", "Disk R_h", "Disk phi",
+             "Disk b/a", "Disk c", "Disk log(Age)"]
 
 if __name__ == "__main__":
 

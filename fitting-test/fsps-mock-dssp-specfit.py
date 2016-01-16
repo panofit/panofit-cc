@@ -26,6 +26,12 @@
     Model: (2.75, 7.5, 0.3, 0.3, 0.75, 2.25, 1.0, 2., 7.5, 0.85, 0.5, 2.0, 0.3)
 '''
 
+'''
+  TODO:
+    the self-made age interpolator doesn't work. switched to the ztinterp routine.
+    ztinterp is slow but it works. / Jan 15, 2016
+'''
+
 # the "correct answer"
 par_opt = (2.75, 7.5, 0.3, 0.3, 0.75, 2.25, 1.0, 2., 7.5, 0.85, 0.5, 2.0, 0.3)
 
@@ -44,14 +50,14 @@ import itertools as itt
 
 # important stuff
 N_ra, N_dec = 32, 32
-ra_ax = np.linspace(-30., 30., N_ra)
-dec_ax = np.linspace(-30., 30., N_dec)
+ra_ax  = np.linspace(-15., 15., N_ra)
+dec_ax = np.linspace(-15., 15., N_dec)
 
 # wavelength cut
 wl_ida, wl_idb = 369, 557
 
 # SNR (global, constant)
-SNR = 20.
+# SNR = 20.
 
 def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
 
@@ -106,7 +112,7 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
   return cube_t
 
 # object function to minimize
-def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
+def _min_objfc(par, cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb):
 
   # unpack parameters to fit
   sersic_n, sersic_re, sersic_Ie, sersic_phi, sersic_q, sersic_c, sersic_age, \
@@ -123,11 +129,28 @@ def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
   del_pc = np.zeros((ra_ax.size, dec_ax.size), dtype = 'f8')
 
   # interpolate ssp
+  #'''
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., sersic_age), peraa = True)
   flux_s = flux_ssp[wl_ida: wl_idb + 1]
 
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., exp_age), peraa = True)
   flux_e = flux_ssp[wl_ida: wl_idb + 1]
+  #'''
+
+  # hand-made linear interpolator # NOTE DEPRICATED. it doesn't work
+  '''
+  aid_a, aid_b, aw = None, np.searchsorted(ax_age, sersic_age), 1.
+  if aid_b == 0: aid_a, aid_b, aw = 0, 0, 1.
+  elif  aid_b == ax_age.size: aid_a, aid_b, aw = ax_age.size - 1, ax_age.size - 1, 1.
+  else: aid_a = aid_b - 1; aw = (sersic_age - ax_age[aid_a]) / (ax_age[aid_b] - ax_age[aid_a])
+  flux_s = (spec_lib[aid_b] * aw + spec_lib[aid_a] * (1. - aw))
+
+  aid_a, aid_b, aw = None, np.searchsorted(ax_age, exp_age), 1.
+  if aid_b == 0: aid_a, aid_b, aw = 0, 0, 1.
+  elif  aid_b == ax_age.size: aid_a, aid_b, aw = ax_age.size - 1, ax_age.size - 1, 1.
+  else: aid_a = aid_b - 1; aw = (exp_age - ax_age[aid_a]) / (ax_age[aid_b] - ax_age[aid_a])
+  flux_e = (spec_lib[aid_b] * aw + spec_lib[aid_a] * (1. - aw))
+  '''
 
   # loop over spectra
   for I_ra, v_ra in enumerate(ra_ax):
@@ -157,7 +180,7 @@ def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
       # model spectrum
       flux_model = flux_s * I_s + flux_e * I_e
       flux_obs = cube[:, I_dec, I_ra]
-      err_obs = 1#flux_obs / SNR
+      err_obs = err[:, I_dec, I_ra]
 
       # find chi_sq of this spectra
       chi_sq_i = ((flux_obs - flux_model) / err_obs) ** 2
@@ -181,27 +204,23 @@ def _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb):
   return chi_sq_sum
 
 # log_L function, for MCMC sampling.
-def _log_prob(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, bounds):
+def _log_prob(par, cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, bounds):
 
   # check bounds: within bounds, return log_L, else return -inf
   if np.all(np.logical_and(np.asarray(bounds)[:, 0] < np.asarray(par), \
                            np.asarray(par) < np.asarray(bounds)[:, 1])):
-    return -0.5 * _min_objfc(par, cube, sp, ra_ax, dec_ax, wl_ida, wl_idb)
+    return -0.5 * _min_objfc(par, cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb)
   else: return -np.inf
 
-def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
+def fit_mock_datacube(cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
 
-  # par_opt = (2.75, 4., 1., 0.3, 0.75, 2.25, 1.0, 0.8, 10., 0.3, 0.5, 2.0, 0.3)
-
-  #init_guess = (2., 1., 1., 0., 0.5, 2., 1., 1., 1., 0., 0.5, 2., 0.)
-  #init_guess = (2.5, 3.75, 1.25, 0.3, 0.7, 2., 0.975, 0.75, 8.5, 0.3125, 0.5125, 1.875, 0.3125)
   init_guess = (2.75, 7.5, 0.3, 0.3, 0.75, 2.25, 1.0, 2., 7.5, 0.85, 0.5, 2.0, 0.3)
-  min_bounds = [(1.e-2, 8.), (1.e-2, 8.e1), (-16., 16.), (-np.pi, np.pi),
+  min_bounds = [(1.e-2, 8.), (1.e-2, 8.e1), (-16., 16.), (-np.pi / 2., np.pi / 2.),
                 (1.e-1, 1.), (1.e-1, 4.),   (-3, 1.1),
-                (-16., 16.), (1.e-2, 3.e2), (-np.pi, np.pi), (1.e-1, 1.),
+                (-16., 16.), (1.e-2, 3.e2), (-np.pi / 2., np.pi / 2.), (1.e-1, 1.),
                 (1.e-1, 4.), (-3, 1.1)]
 
-  #solver = "TNC"
+  # solver = "TNC"
   solver = "MCMC"
 
   if solver == 'TNC':
@@ -216,17 +235,16 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
 
     import emcee, time
 
-    # TODO: make SSP arrays so that target function can be pickled
-
-    N_dim, N_walkers = 13, 32
-    MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob,
-        args = (cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, min_bounds))
+    N_dim, N_walkers = 13, 26
+    MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob, # threads = 3,
+        args = (cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, min_bounds))
+    # cannot use multithreading since sp is not pickable.
 
     init_sol = np.outer(np.ones(N_walkers), np.array(init_guess)) \
-             + 2.5e-2 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
+             + 2.5e-3 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
 
     t0 = time.clock()
-    MC_sampler.run_mcmc(init_sol, 2500)
+    MC_sampler.run_mcmc(init_sol, 2 * 330)
     t1 = time.clock()
     print "takes", t1 - t0, "sec to run."
 
@@ -235,9 +253,23 @@ def fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
 
 if __name__ == "__main__":
 
-  # make stellar pop
+  # make mock cube
   sp = fsps.StellarPopulation(sfh = 0, sf_start = 0.)
   cube = generate_mock_datacube(par_opt, sp, ra_ax, dec_ax, wl_ida, wl_idb)
+  err = np.sqrt(np.round(cube / cube.min())) * cube.min()
+
+  # make spec_lib, ax_age, ax_Z
+  # No longer used. My hand-made interpolator doesn't work.
+  '''
+  ax_age = np.linspace(-3., 1.1, 41)
+  ax_Z   = np.zeros((0)) # reserved for future use
+  spec_lib = np.zeros((ax_age.size, wl_idb - wl_ida + 1))
+
+  # interpolate
+  for i_age, v_age in enumerate(ax_age):
+    flux_t, m_t, l_t = sp.ztinterp(0., np.power(10., v_age), peraa = True)
+    spec_lib[i_age, :] = flux_t[wl_ida: wl_idb + 1] / m_t
+  '''
 
   # mean flux of the cube?
   # print cube.mean()
@@ -246,23 +278,23 @@ if __name__ == "__main__":
   # cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-2
 
   # use Gauss filter to mimic PSF effect.
-  '''
+  #'''
   from scipy.ndimage.filters import gaussian_filter
   cube_new = np.zeros(cube.shape)
   for I_wl in xrange(cube.shape[0]):
-    cube_new[I_wl, :, :] = gaussian_filter(cube[I_wl, :, :], 0.5)
-  #plt.imshow(np.rot90((cube[5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
-  #plt.imshow(np.rot90((cube_new[5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
-  '''
+    cube_new[I_wl, :, :] = gaussian_filter(cube[I_wl, :, :], 1.)
+  plt.imshow(np.rot90((cube[50, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  plt.imshow(np.rot90((cube_new[50, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  #'''
 
   # simulate the effect of redshift
   # wl_ida += 4; wl_idb += 4
 
   # fit it.
-  par_fit = fit_mock_datacube(cube, sp, ra_ax, dec_ax, wl_ida, wl_idb, "mc_sampling_simple")
+  par_fit = fit_mock_datacube(cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, "mock-dssp-fit-psf-1")
 
-  #print par_opt
-  #print par_fit
+  # print par_opt
+  # print par_fit
 
-  # plt.imshow(np.rot90((cube[ 5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
-  # plt.imshow(np.rot90((cube[-5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  # plt.imshow(np.rot90(np.log(cube[ 5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
+  # plt.imshow(np.rot90(np.log(cube[-5, :, :])), interpolation = 'nearest'), plt.colorbar(), plt.show()
