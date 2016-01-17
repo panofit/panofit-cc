@@ -47,14 +47,38 @@ def load_califa_cube(fname):
 
 if __name__ == "__main__":
 
-  flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC0001.V500.rscube.fits")
+  # flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC0001.V500.rscube.fits")
+  flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC7716.V500.rscube.fits")
+
+  # NOTE the source has a redshift of 0.01463 (Ha)
+
+  # print ra/dec axes
+  '''
+  print ra_ax
+  print dec_ax
+  #'''
 
   # cut slice
   id_c = np.searchsorted(dec_ax, 0.)
   flux_sl, err_sl = flux[:, id_c, :], err[:, id_c, :]
+  print id_c
 
-  # plot
+  # plot single-panel, log
   #'''
+  fig = plt.figure(figsize = (18., 4.))
+  plt_rg = [wl_ax[0], wl_ax[-1], ra_ax[0], ra_ax[-1]]
+
+  flux_sl = np.abs(flux_sl)
+  ax1 = fig.add_subplot(1, 1, 1)
+  pl1 = ax1.imshow(np.rot90(np.log10(flux_sl)), interpolation = 'nearest',
+      extent = plt_rg, aspect = 'auto', vmin = -3., vmax = 0.5)
+  plt.colorbar(pl1, ax = ax1)
+
+  plt.show()
+  #'''
+
+  # plot three-panel
+  '''
   fig = plt.figure()
   plt_rg = [wl_ax[0], wl_ax[-1], ra_ax[0], ra_ax[-1]]
 
@@ -83,7 +107,7 @@ if __name__ == "__main__":
   plt.xlim(wl_ax[0], wl_ax[-1])
   plt.plot(wl_ax, flux_t); plt.plot(wl_ax, err_t)
   plt.show()
-  '''
+  #'''
 
   '''
   for I_d in np.arange(dec_ax.size - idc_dec):
@@ -98,5 +122,30 @@ if __name__ == "__main__":
   snr_t = np.abs(flux_sl / err_sl).ravel()
   snr_t[~np.isfinite(snr_t)] = 1.
   plt.hist(np.log10(snr_t), bins = 128, histtype = 'step')
+  plt.show()
+  #'''
+
+  # test de-redshift // it works.
+  '''
+  wl_ida, wl_idb = 369, 557
+  idc_ra  = np.searchsorted(ra_ax,  0.)
+  idc_dec = np.searchsorted(dec_ax, 0.)
+  flux_t, err_t = flux[:, idc_dec, idc_ra], err[:, idc_dec, idc_ra]
+
+  import fsps
+  from spec_utils import *
+  sp = fsps.StellarPopulation(sfh = 0, sf_start = 0., zred = 0.1)
+  flux_w, m_w, lbol_w = sp.ztinterp(0., 10., peraa = True)
+  flux_w = flux_w[wl_ida: wl_idb + 1]
+  wl_w = sp.wavelengths[wl_ida: wl_idb + 1]
+
+  # de-redshift
+  flux_dr, err_dr = restframe(wl_ax, flux_t, err_t, \
+      np.ones(wl_ax.size), wl_w, 0.01463, mask_nan = True)
+
+  # plt.xlim(wl_ax[0], wl_ax[-1])
+  # plt.plot(wl_ax, flux_t)
+  plt.plot(wl_w, flux_dr / np.nanmean(flux_dr))
+  plt.plot(wl_w, flux_w / np.nanmean(flux_w))
   plt.show()
   #'''

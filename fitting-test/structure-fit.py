@@ -13,6 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import emcee, time
 
+from scipy.optimize import fmin_tnc
+
 # global variables
 
 # Trial setup 1.
@@ -82,7 +84,7 @@ def _imfit_fc(par, img, err, ax_x, ax_y):
   chi_sq = np.nanmean(((img_mock - img) / err) ** 2)
 
   # print something
-  '''
+  #'''
   print "% e |"%(chi_sq,),
   for vpar in par: print "% e "%(vpar,),
   print " "
@@ -98,7 +100,7 @@ def _imfit_lnprob(par, img, err, ax_x, ax_y, bounds):
     return -0.5 * _imfit_fc(par, img, err, ax_x, ax_y)
   else: return -np.inf
 
-def fit_image(img, err, ax_x, ax_y, out_fname):
+def fit_image(img, err, ax_x, ax_y, out_fname, solver = "mcmc"):
 
   # set bounds of fitting
   ''' # Test case: 1
@@ -110,23 +112,38 @@ def fit_image(img, err, ax_x, ax_y, out_fname):
   par_bds  = ((0., 4.), (1.e-1, 25.), (-5., 0.), (-np.pi / 2., np.pi / 2.), (1.e-3, 1.), (1., 3.),
               (-5., 0.), (1.e-1, 25.), (-np.pi / 2., np.pi / 2.), (1.e-3, 1.), (1., 3.))
 
-  # set mcmc
-  N_dim, N_walkers = len(par_init), len(par_init) * 2
-  MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _imfit_lnprob,
-      args = (img, err, ax_x, ax_y, par_bds), threads = 4)
+  if solver == "mcmc":
 
-  init_sol = np.outer(np.ones(N_walkers), np.array(par_init)) \
-           + 2.5e-2 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
+    # set mcmc
+    N_dim, N_walkers = len(par_init), len(par_init) * 2
+    MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _imfit_lnprob,
+        args = (img, err, ax_x, ax_y, par_bds), threads = 4)
 
-  # print _imfit_lnprob(par_init, img, ax_x, ax_y, par_bds)
+    init_sol = np.outer(np.ones(N_walkers), np.array(par_init)) \
+             + 2.5e-2 * np.random.randn(N_walkers * N_dim).reshape((N_walkers, N_dim))
 
-  t0 = time.clock()
-  MC_sampler.run_mcmc(init_sol, 5500)
-  t1 = time.clock()
-  print "takes", t1 - t0, "sec to run."
+    # print _imfit_lnprob(par_init, img, ax_x, ax_y, par_bds)
 
-  samples = MC_sampler.chain
-  np.save(out_fname, samples)
+    t0 = time.clock()
+    MC_sampler.run_mcmc(init_sol, 5500)
+    t1 = time.clock()
+    print "takes", t1 - t0, "sec to run."
+
+    samples = MC_sampler.chain
+    np.save(out_fname, samples)
+
+  elif solver == "tnc":
+
+    # set some arbitary init condition
+    par_init = np.mean(np.asarray(par_bds), axis = 1)
+
+    par_fit, N_eval, ret = fmin_tnc(_imfit_fc, par_init,
+        args = (img, err, ax_x, ax_y), approx_grad = True,
+        bounds = par_bds, messages = 0)
+    np.save(out_fname, par_fit)
+    return par_fit
+
+  else: raise RuntimeError("Invalid solver.")
 
 if __name__ == "__main__":
 
@@ -161,9 +178,10 @@ if __name__ == "__main__":
   #'''
 
   # fit mock image
-  fit_image(img, err, X_ax, Y_ax, "structure-fit-test-dssp")
+  fit_image(img, err, X_ax, Y_ax, "structure-fit-test-dssp", solver = "tnc")
 
-  # plot results
+  # plot results (MCMC solver)
+  '''
   chain = np.load("structure-fit-test-dssp.npy")
   #chain = chain.reshape((-1, len(par_opt)))
   chain = (chain[:, 500:, :]).reshape((-1, len(par_opt)))
@@ -171,3 +189,4 @@ if __name__ == "__main__":
   import corner
   fig = corner.corner(chain, truths = par_opt, labels = par_id.split())
   plt.savefig("structure-fit-test-553-mockdssp.npy.pdf")
+  '''

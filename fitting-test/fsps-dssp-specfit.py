@@ -7,22 +7,7 @@
   Parameters to optimize: sersic_n,   sersic_re,  sersic_Ie,  sersic_phi, sersic_q
                           sersic_c,   sersic_age, exp_Ic,     exp_h,      exp_phi,
                           exp_q,      exp_c,      exp_age,
-  with a bounded minimization solver.
-
-  First run [tnc solver]: (looks reasonable)
-    1.20189845   5.99849347 -12.0130215   -0.31569187   0.51323838
-    1.99219028   1.09990431 -11.29316191  12.61844848  -0.14629537
-    0.57732247   2.31568646   0.15574498
-
-  Second run [tnc solver]:
-    0.86428252   2.7846034  -15.36964374  -2.22694922   0.80212827
-    1.06718218   1.01979302 -11.08551644   9.79371104  -2.06361907
-    0.98261746   2.42270186   0.32113472
-
-  Third run [diff-evo]:
-    0.01170914   6.89123059  10.92779896   3.02595948   0.68800141
-    0.12277318  -0.77716597 -10.09690454   2.38735419   1.95948294
-    0.31298667   3.12340962   1.1
+  with a Monte-carlo solver.
 '''
 
 # specify the name of the data cube
@@ -52,8 +37,6 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
       exp_Ic, exp_h, exp_phi, exp_q, exp_c, exp_age = par
   id_a, id_b = wl_cut_idx
 
-  #print "Target function called with param:", par
-
   # calculate d_n for sersic component
   ek1, ek2, ek3, ek4, ek5, ek6 = 3., -1. / 3., 8. / 1215., \
       184. / 229635., 1048. / 31000725., -17557576. / 1242974068875.
@@ -73,9 +56,6 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
   # loop over spectra
   for id_spec, spec_t in enumerate(spec_list):
 
-    # print "\r", id_spec, "...",
-    # sys.stdout.flush()
-
     # unpack spectrum
     X_i, Y_i, flux_i, err_i = spec_t
 
@@ -90,7 +70,7 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
     Y_s = r_i * (sin_ri * cos_ps - cos_ri * sin_ps)
     M_s = np.power( np.power(np.abs(X_s), sersic_c)
                   + np.power(np.abs(Y_s) / sersic_q, sersic_c), 1. / sersic_c)
-    I_s = np.power(10., sersic_Ie) * np.exp(-d_n * (np.power(M_s / sersic_re, 1. / sersic_n) - 1.))
+    I_s = np.power(2.512, -sersic_Ie) * np.exp(-d_n * (np.power(M_s / sersic_re, 1. / sersic_n) - 1.))
 
     # calculate "surface brightness" of exponential component
     cos_pe, sin_pe = np.cos(exp_phi), np.sin(exp_phi)
@@ -98,7 +78,7 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
     Y_e = r_i * (sin_ri * cos_pe - cos_ri * sin_pe)
     M_e = np.power( np.power(np.abs(X_e), exp_c)
                   + np.power(np.abs(Y_e) / exp_q, exp_c), 1. / exp_c)
-    I_e = np.power(10., exp_Ic) * np.exp(-np.abs(M_e / exp_h))
+    I_e = np.power(2.512, -exp_Ic) * np.exp(-np.abs(M_e / exp_h))
 
     # model spectrum
     flux_model = flux_s * I_s + flux_e * I_e
@@ -114,7 +94,7 @@ def _min_objfc(par, spec_list, sp, wl_cut_idx):
   chi_sq_sum = np.sum(chi_sq)
 
   # print "  Target function gets chi_sq:", chi_sq_sum, "\n"
-  print "%E"%chi_sq_sum,
+  print "% E"%chi_sq_sum,
   for ipar in par: print "% E"%ipar,
   print ' '
 
@@ -148,7 +128,7 @@ def fit_datacube(filename):
 
   # data, err and mask, clear bad pixels
   flux, err, mask = hlst[0].data, hlst[1].data, hlst[2].data
-  flux[mask == 0] = np.nan
+  # flux[mask == 0] = np.nan
 
   # valid pixels
   valid_spaxels = []
@@ -195,11 +175,9 @@ def fit_datacube(filename):
     exp_c,    exp_age,
   '''
 
-  #print np.nanmean(flux_new)
-  #sys.exit()
-
   # call fitting routine.
 
+  # init condition and bounds
   init_guess = (2., 1., 1., 0., 0.5, 2., 1., 1., 1., 0., 0.5, 2., 0.)
   min_bounds = [(1.e-2, 8.), (1.e-2, 4.e1), (-16., 16.), (-np.pi, np.pi),
                 (1.e-1, 1.), (1.e-1, 4.),   (-3, 1.1),

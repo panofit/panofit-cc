@@ -10,6 +10,8 @@
 
 '''
 
+# FIXME it doesn't work now...
+
 # specify the name of the data cube
 datacube_path = "./califa_sample/NGC0001.V500.rscube.fits"
 
@@ -155,7 +157,7 @@ def fit_datacube(filename, out_fname):
   flux[mask == 0] = np.nan
   print np.nanmean(flux)
   sys.exit()
-  '''
+  # '''
 
   # valid pixels
   valid_spaxels = []
@@ -277,4 +279,4 @@ def fit_datacube(filename, out_fname):
     samples = MC_sampler.chain
     np.save(out_fname, samples)
 
-if __name__ == "__main__": fit_datacube(datacube_path, "fsps-singlessp-agegradient-run-pt.dat")
+if __name__ == "__main__": fit_datacube(datacube_path, "fsps-singlessp-agegradient-test.dat")

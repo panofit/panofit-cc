@@ -95,7 +95,7 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
       Y_s = r_i * (sin_ri * cos_ps - cos_ri * sin_ps)
       M_s = np.power( np.power(np.abs(X_s), sersic_c)
                     + np.power(np.abs(Y_s) / sersic_q, sersic_c), 1. / sersic_c)
-      I_s = np.power(10., sersic_Ie) * np.exp(-d_n * (np.power(M_s / sersic_re, 1. / sersic_n) - 1.))
+      I_s = np.power(2.512, -sersic_Ie) * np.exp(-d_n * (np.power(M_s / sersic_re, 1. / sersic_n) - 1.))
 
       # calculate "surface brightness" of exponential component
       cos_pe, sin_pe = np.cos(exp_phi), np.sin(exp_phi)
@@ -103,11 +103,11 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
       Y_e = r_i * (sin_ri * cos_pe - cos_ri * sin_pe)
       M_e = np.power( np.power(np.abs(X_e), exp_c)
                     + np.power(np.abs(Y_e) / exp_q, exp_c), 1. / exp_c)
-      I_e = np.power(10., exp_Ic) * np.exp(-np.abs(M_e / exp_h))
+      I_e = np.power(2.512, -exp_Ic) * np.exp(-np.abs(M_e / exp_h))
 
       # model spectrum
       cube_t[:, I_dec, I_ra] = flux_s * I_s + flux_e * I_e
-      #cube_t[:, I_dec, I_ra] = np.log10(I_s + I_e)
+      # cube_t[:, I_dec, I_ra] = np.log10(I_s + I_e)
 
   return cube_t
 
@@ -220,13 +220,16 @@ def fit_mock_datacube(cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, out_fname):
                 (-16., 16.), (1.e-2, 3.e2), (-np.pi / 2., np.pi / 2.), (1.e-1, 1.),
                 (1.e-1, 4.), (-3, 1.1)]
 
-  # solver = "TNC"
-  solver = "MCMC"
+  solver = "TNC"
+  # solver = "MCMC"
 
   if solver == 'TNC':
 
+    # set some arbitary init condition
+    init_guess = np.mean(np.asarray(min_bounds), axis = 1)
+
     par_fit, N_eval, ret = fmin_tnc(_min_objfc, init_guess,
-        args = (cube, sp, ra_ax, dec_ax, wl_ida, wl_idb), approx_grad = True,
+        args = (cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb), approx_grad = True,
         bounds = min_bounds, messages = 0)
     np.save(out_fname, par_fit)
     return par_fit
@@ -258,6 +261,9 @@ if __name__ == "__main__":
   cube = generate_mock_datacube(par_opt, sp, ra_ax, dec_ax, wl_ida, wl_idb)
   err = np.sqrt(np.round(cube / cube.min())) * cube.min()
 
+  # ratio?
+  print "SNR:", np.exp(np.mean(np.log(cube / err)))
+
   # make spec_lib, ax_age, ax_Z
   # No longer used. My hand-made interpolator doesn't work.
   '''
@@ -278,7 +284,7 @@ if __name__ == "__main__":
   # cube = cube + np.random.randn(cube.size).reshape(cube.shape) * np.mean(cube) * 1.e-2
 
   # use Gauss filter to mimic PSF effect.
-  #'''
+  '''
   from scipy.ndimage.filters import gaussian_filter
   cube_new = np.zeros(cube.shape)
   for I_wl in xrange(cube.shape[0]):
@@ -291,7 +297,7 @@ if __name__ == "__main__":
   # wl_ida += 4; wl_idb += 4
 
   # fit it.
-  par_fit = fit_mock_datacube(cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, "mock-dssp-fit-psf-1")
+  # par_fit = fit_mock_datacube(cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb, "mock-dssp-fit-tnc.tx")
 
   # print par_opt
   # print par_fit

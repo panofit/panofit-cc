@@ -7,6 +7,28 @@
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 
+# move the spectra to rest frame
+def restframe(wl, flux, err, mask, wl_new, z, mask_nan = False):
+
+  wl_restf = wl / (1. + z)
+  flux_atd = InterpolatedUnivariateSpline(wl, flux).antiderivative()
+  flux_spl = InterpolatedUnivariateSpline(wl_restf, flux_atd(wl)).derivative()
+
+  err_intp = InterpolatedUnivariateSpline(wl_restf, err)
+  mask_spl = interp1d(wl_restf, mask, kind = 'nearest', copy = False,
+      bounds_error = False, fill_value = 0., assume_sorted = True)
+
+  flux_new, err_new, mask_new = flux_spl(wl_new), err_intp(wl_new), mask_spl(wl_new)
+  mask_new = np.round(mask_new).astype('i4')
+
+  # correct bad pixels
+  if mask_nan:
+    flux_new[mask_new == 0] = np.nan
+    err_new[mask_new == 0]  = np.nan
+    return flux_new, err_new
+
+  else: return flux_new, err_new, mask_new
+
 def rebin(wl, flux, err, mask, wl_new, mask_nan = False):
 
   # construct anti-deriv
