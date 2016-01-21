@@ -4,16 +4,17 @@
   Fit CALIFA V500 spectral cube of NGC 1 with two components (proof of concept)
   YJ Qin, Jan 2016 @ Shanghai
 
-  Parameters to optimize: sersic_n,   sersic_re,  sersic_Ie,  sersic_phi, sersic_q
+  Parameters to optimize: x_c,        y_c,
+                          sersic_n,   sersic_re,  sersic_Ie,  sersic_phi, sersic_q
                           sersic_c,   sersic_age, exp_Ic,     exp_h,      exp_phi,
                           exp_q,      exp_c,      exp_age,
   with a Monte-carlo solver.
 
-  # Note: the mock model here is generated as cubes.
+  # Note: similar as fsps-dssp-specfit-cube.py, but having another two parameters x_c and y_c
 '''
 
 # specify the name of the data cube
-datacube_path = "./califa_sample/NGC0001.V500.rscube.fits"
+datacube_path = "/home/qinyj/workspace/panofit/califa_sample/NGC0001.V500.rscube.fits"
 source_redshift = 0.015147
 PSF_size = 1.
 
@@ -38,7 +39,7 @@ from spec_utils import *
 def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
 
   # unpack param
-  sersic_n, sersic_re, sersic_Ie, sersic_phi, sersic_q, sersic_c, sersic_age, \
+  x_c, y_c, sersic_n, sersic_re, sersic_Ie, sersic_phi, sersic_q, sersic_c, sersic_age, \
       exp_Ic, exp_h, exp_phi, exp_q, exp_c, exp_age = par
 
   # calculate structural information
@@ -61,8 +62,8 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
     for I_dec, v_dec in enumerate(dec_ax):
 
       # calculate structural param
-      r_i = np.sqrt(v_ra ** 2 + v_dec ** 2)
-      cos_ri, sin_ri = v_ra / r_i, v_dec / r_i
+      r_i = np.sqrt((v_ra - x_c) ** 2 + (v_dec - y_c) ** 2)
+      cos_ri, sin_ri = (v_ra - x_c) / r_i, (v_dec - y_c) / r_i
       if np.any(~np.isfinite(cos_ri)): cos_ri, sin_ri = 1., 0.
 
       # calculate "surface brightness" of sersic component
@@ -89,22 +90,16 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
 # object function for fitting
 def _min_objfc(par, cube, err, sp, ra_ax, dec_ax, wl_ida, wl_idb):
 
-  t0 = time.clock()
-
   # make the cube.
   cube_m = generate_mock_datacube(par, sp, ra_ax, dec_ax, wl_ida, wl_idb)
-
-  t1 = time.clock()
 
   # Gaussian blurring
   cube_new = np.zeros(cube_m.shape)
   for I_wl in xrange(cube_m.shape[0]):
     cube_new[I_wl, :, :] = gaussian_filter(cube_m[I_wl, :, :], PSF_size)
 
-  t2 = time.clock()
-
   # calculate chi_sq
-  chi_sq = np.nanmean(((cube_new - cube) / err) ** 2)
+  chi_sq = np.nansum(((cube_new - cube) / err) ** 2)
 
   # print chi_sq and param
   print "% E"%chi_sq,
@@ -201,26 +196,11 @@ def fit_datacube(filename):
 
   # init condition and bounds
 
-  init_guess = (2.0, 12., -8.0, 0.00, 1.00, 2.00, 1.0, -8., 15., 0.85, 0.75, 2.0, 0.3) # for N0001
+  init_guess = (0., 0., 2.0, 12., -8.0, 0.00, 1.00, 2.00, 1.0, -8., 15., 0.85, 0.75, 2.0, 0.3) # for N0001
 
-  # for N7716
-  '''
-  init_guess = (2.0,  # sersic n
-                12.,  # sersic re
-               -9.0,  # sersic Ie (log-2.512-based)
-                0.00, # sersic phi
-                1.00, # sersic q
-                2.00, # sersic c
-                1.0,  # sersic age
-               -9.0,  # exp Ic
-                12.,  # exp h
-                0.85, # exp phi
-                0.75, # exp q
-                2.0,  # exp c
-                0.3)  # exp_age
-  '''
-
-  min_bounds = [(1.e-1, 8.),                # sersic n
+  min_bounds = [(-5., 5.),                  # x_c
+                (-5., 5.),                  # y_c
+                (1.e-1, 8.),                # sersic n
                 (1.e0, 3.5e1),              # sersuc re
                 (-16., 0.),                 # sersic Ie
                 (-np.pi / 2., np.pi / 2.),  # sersic phi
@@ -264,9 +244,9 @@ def fit_datacube(filename):
     MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob,
         args = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds))
     t0 = time.clock()
-    for I_mc in range(100):
-      if I_mc: MC_sampler.run_mcmc(init_guess, 500)
-      else: MC_sampler.run_mcmc(init_guess, 500)
+    for I_mc in range(10):
+      if I_mc > 0: MC_sampler.run_mcmc(None, 4)
+      else: MC_sampler.run_mcmc(init_guess, 4)
       np.save(datacube_path.split('/')[-1] + '.chain-%03u'%(I_mc,), MC_sampler.chain)
       MC_sampler.reset()
     t1 = time.clock()
@@ -289,13 +269,16 @@ def fit_datacube(filename):
         loglargs = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds),
         logpargs = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds))
 
-    init_sol = np.load("./NGC2410.V500.rscube.fits.ptchain.npy")[:, :, -1, :]
-
+    # DEBUG
     '''
+    init_sol = np.load("./NGC2410.V500.rscube.fits.ptchain.npy")[:, :, -1, :]
+    '''
+
+    #'''
     init_sol = np.multiply.outer(np.ones(N_temps),\
         np.outer(np.ones(N_walkers), np.array(init_guess)))
     init_sol += 2.5e-1 * np.random.randn(init_sol.size).reshape(init_sol.shape)
-    '''
+    #'''
 
     t0 = time.clock()
     for I_mc in range(3):

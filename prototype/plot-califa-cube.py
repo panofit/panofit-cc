@@ -32,25 +32,30 @@ def load_califa_cube(fname):
   dec_ax = -hlst[0].header['CRPIX2'] + hlst[0].header['CDELT2'] * np.arange(N_dec)
 
   # data, err and mask
-  flux, err, mask = hlst[0].data, hlst[1].data, hlst[2].data
+  flux, err, mask = hlst[0].data, hlst[1].data, hlst[3].data
 
   # mask bad pixels
-  #flux[mask == 0] = np.nan
-  err[mask == 0]  = np.nan
+  # flux[mask == 0] = np.nan
+  # err[mask == 0]  = np.nan
 
   # mask zeros
-  #flux[err > 1.e8] = np.nan
-  err[err > 1.e8]  = np.nan
+  # flux[err > 1.e8] = np.nan
+  # err[err > 1.e8]  = np.nan
 
   # return values
-  return flux, err, ra_ax, dec_ax, wl_ax
+  return flux, err, mask, ra_ax, dec_ax, wl_ax
 
 if __name__ == "__main__":
 
   # flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC0001.V500.rscube.fits")
-  flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC7716.V500.rscube.fits")
+  flux, err, mask, ra_ax, dec_ax, wl_ax = load_califa_cube("/home/qinyj/workspace/panofit/califa_sample/NGC2410.V500.rscube.fits")
 
-  # NOTE the source has a redshift of 0.01463 (Ha)
+  plt.imshow(np.rot90(flux[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
+  plt.colorbar(); plt.show()
+  plt.imshow(np.rot90(err[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
+  plt.colorbar(); plt.show()
+  plt.imshow(np.rot90(mask[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
+  plt.colorbar(); plt.show()
 
   # print ra/dec axes
   '''
@@ -64,7 +69,7 @@ if __name__ == "__main__":
   print id_c
 
   # plot single-panel, log
-  #'''
+  '''
   fig = plt.figure(figsize = (18., 4.))
   plt_rg = [wl_ax[0], wl_ax[-1], ra_ax[0], ra_ax[-1]]
 
@@ -93,6 +98,42 @@ if __name__ == "__main__":
   ax3 = fig.add_subplot(3, 1, 3)
   pl3 = ax3.imshow(np.rot90(np.abs(flux_sl / err_sl)), interpolation = 'nearest',
              extent = plt_rg, aspect = 'auto', vmin = np.power(10., -1.), vmax = np.power(10., 2.2))
+  plt.colorbar(pl3, ax = ax3)
+
+  plt.show()
+  #'''
+
+  # plot flux sum
+  '''
+  fig = plt.figure(figsize = (12., 12.))
+  plt_rg = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]]
+
+  ax1 = fig.add_subplot(1, 1, 1)
+  pl1 = ax1.imshow(np.abs(np.rot90(np.swapaxes(flux.sum(axis = 0), 0, 1))), interpolation = 'nearest', extent = plt_rg, aspect = 'equal')
+  plt.colorbar(pl1, ax = ax1)
+
+  plt.show()
+  #'''
+
+  # plot three images
+  '''
+  fig = plt.figure(figsize = (18., 5.))
+
+  id1, id2, id3 = np.searchsorted(wl_ax, [4500., 5500., 7000.])
+
+  ax1 = fig.add_subplot(1, 3, 1)
+  pl1 = ax1.imshow(np.rot90(np.swapaxes(flux[id1, :, :], 0, 1)), interpolation = 'nearest',
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
+  plt.colorbar(pl1, ax = ax1)
+
+  ax2 = fig.add_subplot(1, 3, 2)
+  pl2 = ax2.imshow(np.rot90(np.swapaxes(flux[id2, :, :], 0, 1)), interpolation = 'nearest',
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
+  plt.colorbar(pl2, ax = ax2)
+
+  ax3 = fig.add_subplot(1, 3, 3)
+  pl3 = ax3.imshow(np.rot90(np.swapaxes(flux[id3, :, :], 0, 1)), interpolation = 'nearest',
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
   plt.colorbar(pl3, ax = ax3)
 
   plt.show()

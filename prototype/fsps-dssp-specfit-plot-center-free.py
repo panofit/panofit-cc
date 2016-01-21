@@ -4,10 +4,14 @@
   Visualize the result of fsps-dualssp-fit.py
   YJ Qin, Jan 2016 @ Shanghai
 
-  Parameters: sersic_n, sersic_re, sersic_Ie,  sersic_phi,
+  Parameters: x_c, y_c,
+              sersic_n, sersic_re, sersic_Ie,  sersic_phi,
               sersic_q, sersic_c,  sersic_age,
               exp_Ic,   exp_h,     exp_phi,    exp_q,
               exp_c,    exp_age,
+
+  NOTE: this is almost the same as fsps-dssp-specfit-plot.py, just for models
+    whose center coordinates (X_c, Y_c) are free parameters.
 '''
 
 # import everything
@@ -28,7 +32,7 @@ import corner
 import sys
 import itertools as itt
 
-par_names = ["Sersic n", "Bulge Re", "Bulge Ie", "Bulge phi", "Bulge b/a",
+par_names = ["X_c", "Y_c", "Sersic n", "Bulge Re", "Bulge Ie", "Bulge phi", "Bulge b/a",
              "Bulge c", "Bulge log(Age)", "Disk Ic", "Disk R_h", "Disk phi",
              "Disk b/a", "Disk c", "Disk log(Age)"]
 
@@ -61,8 +65,8 @@ def _read_spec_cube(datacube_path):
 def _mock_spec_cube(ra_ax, dec_ax, par, sp, wl_cut_idx):
 
   # unpack parameters
-  sersic_n, sersic_re, sersic_Ie, sersic_phi, sersic_q, sersic_c, sersic_age, \
-      exp_Ic, exp_h, exp_phi, exp_q, exp_c, exp_age = par
+  x_c, y_c, sersic_n, sersic_re, sersic_Ie, sersic_phi, sersic_q, \
+      sersic_c, sersic_age, exp_Ic, exp_h, exp_phi, exp_q, exp_c, exp_age = par
   id_a, id_b = wl_cut_idx
 
   # calculate structural information
@@ -87,8 +91,8 @@ def _mock_spec_cube(ra_ax, dec_ax, par, sp, wl_cut_idx):
     for I_dec, v_dec in enumerate(dec_ax):
 
       # calculate "surface brightness" for the disk and the bulge
-      r_i = np.sqrt(v_ra ** 2 + v_dec ** 2)
-      cos_ri, sin_ri = v_ra / r_i, v_dec / r_i
+      r_i = np.sqrt((v_ra - x_c) ** 2 + (v_dec - y_c) ** 2)
+      cos_ri, sin_ri = (v_ra - x_c) / r_i, (v_dec - y_c) / r_i
       if np.any(~np.isfinite(cos_ri)): cos_ri, sin_ri = 1., 0.
 
       # calculate "surface brightness" of sersic component
@@ -117,7 +121,7 @@ def _density_peak_min_tgfc(par_t, ch_t, par_std):
 
   dist = np.zeros_like(ch_t)
   for i_dim in range(ch_t.shape[1]):
-    if i_dim == 3 or i_dim == 9: # two dims with periodic
+    if i_dim == 5 or i_dim == 11: # two dims with periodic
       dist[:, i_dim] = np.fmod(ch_t[:, i_dim] - par_t[i_dim], (np.pi / 2.) / par_std[i_dim])
     else: dist[:, i_dim] = ch_t[:, i_dim] - par_t[i_dim]
 
@@ -125,6 +129,8 @@ def _density_peak_min_tgfc(par_t, ch_t, par_std):
 
 def _density_peak(chain):
 
+  # DEBUG
+  # return np.mean(chain, axis = 0)
   return np.median(chain, axis = 0)
 
   # not the best solution. just returns the mean value.
@@ -181,19 +187,14 @@ if __name__ == "__main__":
   print "Finding optimal solution..."
   chain = np.load(chain_path)
   if chain.ndim == 3: # normal ensemble sampler
-    chain = (chain[:, 500:, :]).reshape((-1, 13))
+    chain = (chain[:, 500:, :]).reshape((-1, 15))
   elif chain.ndim == 4: # parallel tempering
-    chain = (chain[:, :, 500:, :]).reshape((-1, 13))
+    chain = (chain[:, :, 500:, :]).reshape((-1, 15))
   else: raise RuntimeError("Wrong MCMC chain dimension.")
-  chain = chain[chain[:,  4] <= 1., :]
-  chain = chain[chain[:, 10] <= 1., :]
+  chain = chain[chain[:,  6] <= 1.,  :] # bounds cut
+  chain = chain[chain[:,  8] <= 1.1, :]
   par_opt = _density_peak(chain)
-  print par_opt
-  ''' # DEBUG
-  par_opt = (0.86925408, 7.89477418, -8.82317326, -0.4356502, 0.75141268,
-             1.93851449, 0.55313915, -9.90119334, 12.76594508, -0.20848418,
-             0.88245159, 2.15420082, 0.59015511)
-  '''
+  print "best-fitting parameters:", par_opt
 
   # generate the best-fitting model cube
   print "Making best-fitting model..."
