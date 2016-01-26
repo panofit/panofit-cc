@@ -54,7 +54,7 @@ def _read_spec_cube(datacube_path):
   ra_c, dec_c = int(hlst[0].header['CRPIX1']), int(hlst[0].header['CRPIX2'])
 
   # data, err and mask
-  flux, err, mask = np.copy(hlst[0].data), np.copy(hlst[1].data), np.copy(hlst[2].data)
+  flux, err, mask = np.copy(hlst[0].data), np.copy(hlst[1].data), 1 - np.copy(hlst[3].data)
 
   # close fits file.
   hlst.close()
@@ -162,6 +162,10 @@ if __name__ == "__main__":
   print "Loading datacube..."
   flux, err, mask, wl_ax, ra_ax, dec_ax = _read_spec_cube(datacube_path)
 
+  # pre-processing of the data cube.
+  mask[err > 1.e5] = 0                          # mask zero-value pixels
+  mask[np.log10(np.abs(flux / err)) > 2.4] = 0  # mask abnormal SNR
+
   # get center of the galaxy
   ra_ic, dec_ic = np.argmin(np.abs(ra_ax)), np.argmin(np.abs(dec_ax))
 
@@ -171,16 +175,34 @@ if __name__ == "__main__":
 
   # cut the valid range of wavelength
   id_a, id_b = np.searchsorted(sp.wavelengths,
-      [wl_ax[0] / (1. + source_redshift), wl_ax[-1] / (1. + source_redshift)], side = 'left')
+      [wl_ax[0] / (1. + source_redshift), wl_ax[-1] / (1. + source_redshift)])
   wl_new = (sp.wavelengths)[id_a: id_b + 1]
 
   # redshift correction and rebinning of the original cube
   print "Rebinning..."
-  flux_rf = np.zeros((wl_new.size, dec_ax.size, ra_ax.size))
+  flux_rf = np.zeros((wl_new.size, dec_ax.size, ra_ax.size)) + np.nan
+  err_new  = np.zeros((wl_new.size, dec_ax.size, ra_ax.size)) + np.nan
+  mask_new = np.zeros((wl_new.size, dec_ax.size, ra_ax.size), dtype = 'i4')
+
   for i_ra, i_dec in itt.product(np.arange(ra_ax.size), np.arange(dec_ax.size)):
-    flux_i, err_i = restframe(wl_ax, flux[:, i_dec, i_ra],
-        err[:, i_dec, i_ra], mask[:, i_dec, i_ra], wl_new, source_redshift, mask_nan = True)
-    flux_rf[:, i_dec, i_ra] = flux_i
+
+    # if outside the hexagon, set nan.
+    if np.sum(mask[:, i_dec, i_ra]) == 0: continue
+
+    # extract from the cube
+    flux_t, err_t, mask_t = \
+        flux[:, i_dec, i_ra], err[:, i_dec, i_ra], mask[:, i_dec, i_ra]
+
+    flux_i, err_i, mask_i = restframe(wl_ax, flux_t, err_t, mask_t,
+        wl_new, source_redshift, mask_nan = False)
+
+    # put into the new cube
+    flux_rf[:, i_dec, i_ra], err_new[:, i_dec, i_ra], \
+        mask_new[:, i_dec, i_ra] = flux_i, err_i, mask_i
+
+  # pre-processing of spectral cubes
+  flux_rf[mask_new == 0] = np.nan
+  err_new[mask_new == 0]  = np.nan
 
   # load the chain and determine the best solution
   #'''

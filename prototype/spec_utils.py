@@ -10,48 +10,65 @@ from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 # move the spectra to rest frame
 def restframe(wl, flux, err, mask, wl_new, z, mask_nan = False):
 
+  # rest-frame wavelength
   wl_restf = wl / (1. + z)
-  flux_atd = InterpolatedUnivariateSpline(wl, flux).antiderivative()
+
+  # flux interpolator
+  flux_atd = InterpolatedUnivariateSpline(wl, flux).antiderivative() # FIXME bounds?
   flux_spl = InterpolatedUnivariateSpline(wl_restf, flux_atd(wl)).derivative()
 
-  err_intp = InterpolatedUnivariateSpline(wl_restf, err)
-  mask_spl = interp1d(wl_restf, mask, kind = 'nearest', copy = False,
-      bounds_error = False, fill_value = 0., assume_sorted = True)
+  # error interpolator (not the right way...)
+  err_intp = InterpolatedUnivariateSpline(wl_restf[mask == 1], err[mask == 1], k = 1, ext = 3)
+  # mask_spl = InterpolatedUnivariateSpline(wl_restf, mask.astype('f8'), k = 1)
 
-  flux_new, err_new, mask_new = flux_spl(wl_new), err_intp(wl_new), mask_spl(wl_new)
-  mask_new = np.round(mask_new).astype('i4')
+  # interpolate
+  flux_new, err_new = flux_spl(wl_new), err_intp(wl_new)
+  mask_new = np.ones(flux_new.size, dtype = 'i4')
 
-  # correct bad pixels
+  # mask bad points
+  badpx_restwl = wl_restf[mask == 0]
+  wlt_a, wlt_b = 2. * wl_new[0] - wl_new[1], 2. * wl_new[-1] - wl_new[-2]
+  badpx_restwl = badpx_restwl[(badpx_restwl > wlt_a) & (badpx_restwl < wlt_b)]
+  id_badpts = np.unique(np.searchsorted(0.5 * (wl_new[1:] + wl_new[:-1]), badpx_restwl))
+
+  # mask bad pixels as NaN?
   if mask_nan:
-    flux_new[mask_new == 0] = np.nan
-    err_new[mask_new == 0]  = np.nan
+    flux_new[id_badpts], err_new[id_badpts] = np.nan, np.nan
     return flux_new, err_new
 
-  else: return flux_new, err_new, mask_new
+  # if not, fill with large values.
+  else:
+    err[id_badpts], mask_new[id_badpts] = 1.e10, 0
+    return flux_new, err_new, mask_new
 
 def rebin(wl, flux, err, mask, wl_new, mask_nan = False):
 
   # construct anti-deriv
-  #'''
   flux_atd = InterpolatedUnivariateSpline(wl, flux).antiderivative()
   flux_spl = InterpolatedUnivariateSpline(wl_new, flux_atd(wl_new)).derivative()
-  #'''
-  # flux_spl = InterpolatedUnivariateSpline(wl, flux).antiderivative().derivative() # -> fig2
 
-  err_intp = InterpolatedUnivariateSpline(wl, err)
-  mask_spl = interp1d(wl, mask, kind = 'nearest', copy = False,
-      bounds_error = False, fill_value = 0., assume_sorted = True)
+  err_intp = InterpolatedUnivariateSpline(wl[mask == 1], err[mask == 1], k = 1, ext = 3)
+  # mask_spl = InterpolatedUnivariateSpline(wl, mask.astype('f8'), k = 1)
 
   # evaluate
-  flux_new, err_new, mask_new = flux_spl(wl_new), err_intp(wl_new), mask_spl(wl_new)
+  flux_new, err_new = flux_spl(wl_new), err_intp(wl_new)
+  mask_new = np.ones(flux_new.size, dtype = 'i4')
 
-  # correct bad pixels
+  # mask bad points
+  badpx_wl = wl[mask == 0]
+  wlt_a, wlt_b = 2. * wl_new[0] - wl_new[1], 2. * wl_new[-1] - wl_new[-2]
+  badpx_wl = badpx_wl[(badpx_wl > wlt_a) & (badpx_wl < wlt_b)]
+  id_badpts = np.unique(np.searchsorted(0.5 * (wl_new[1:] + wl_new[:-1]), badpx_wl))
+
+  # mask bad pixels as NaN?
   if mask_nan:
-    flux_new[mask_new == 0] = np.nan
-    err_new[mask_new == 0]  = np.nan
+    flux_new[mask_new != 1], err_new[mask_new != 1] = np.nan, np.nan
     return flux_new, err_new
 
-  else: return flux_new, err_new, mask_new
+  # if not, fill with large values.
+  else:
+    err[mask_new < 0.5], mask_new[mask_new < 0.5] = 1.e10, 0
+    return flux_new, err_new, mask_new.astype('i4')
 
 # perform tests
 if __name__ == "__main__":
@@ -71,7 +88,7 @@ if __name__ == "__main__":
     N_wlpts = 100
     wl_new = np.linspace(wl_sp[0], wl_sp[-1], N_wlpts)
     flux_new, err_new, mask_new = rebin(wl_sp, flux_sp, \
-        np.zeros_like(wl_sp), np.ones(wl_sp.shape), wl_new)
+        flux_sp * 0.1, np.ones(wl_sp.shape), wl_new)
 
     # draw
     plt.plot(wl_sp, np.log10(flux_sp), c = 'r', label = "Original")

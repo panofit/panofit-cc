@@ -50,6 +50,8 @@ def rebin(wl, flux, err, mask, wl_new):
 # object function for fitting
 def _min_objfc(par, spec_list, spec_lib, ax_age, ax_Z):
 
+  raise NotImplementedError("Not working now.")
+
   # unpack parameters to fit
   sersic_n, sersic_re, sersic_Ie, sersic_phi, \
       sersic_q, sersic_c, ssp_age_c, ssp_age_k = par

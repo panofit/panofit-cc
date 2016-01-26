@@ -14,8 +14,9 @@
 '''
 
 # specify the name of the data cube
-datacube_path = "/home/qinyj/workspace/panofit/califa_sample/NGC0001.V500.rscube.fits"
-source_redshift = 0.015147
+data_path = "/home/qinyj/workspace/panofit/califa_sample/"
+datacube_path = data_path + "NGC7716.V500.rscube.fits"
+source_redshift = 0.008546
 PSF_size = 1.
 
 # specify the solver
@@ -134,14 +135,28 @@ def fit_datacube(filename):
   dec_ax = -hlst[0].header['CRPIX2'] + hlst[0].header['CDELT2'] * np.arange(N_dec)
 
   # data, err and mask, clear bad pixels
-  flux, err, mask = hlst[0].data, hlst[1].data, hlst[2].data
+  flux, err, mask = hlst[0].data, hlst[1].data, 1 - hlst[3].data
+  # my definition: 1 corresponds to valid.
 
-  # DEBUG
-  # sys.exit()
+  # get center of the galaxy
+  ra_ic, dec_ic = np.argmin(np.abs(ra_ax)), np.argmin(np.abs(dec_ax))
+
+  # DEBUG PLOT
+  if False:
+    fig = plt.figure(figsize = (15., 15.))
+    ax1, ax2, ax3 = fig.add_subplot(3, 1, 1), fig.add_subplot(3, 1, 2), fig.add_subplot(3, 1, 3)
+    pl1 = ax1.imshow(np.rot90(flux[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
+    pl2 = ax2.imshow(np.rot90(np.log10(err[:, 36, :])), interpolation = 'nearest', aspect = 'auto')
+    pl3 = ax3.imshow(np.rot90(mask[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
+    plt.colorbar(pl1, ax = ax1), plt.colorbar(pl2, ax = ax2), plt.colorbar(pl3, ax = ax3)
+    plt.show()
+    # sys.exit()
 
   # pre-processing of the data cube.
+  #'''
   mask[err > 1.e5] = 0                          # mask zero-value pixels
   mask[np.log10(np.abs(flux / err)) > 2.4] = 0  # mask abnormal SNR
+  #'''
 
   # make stellar pop
   sp = fsps.StellarPopulation(sfh = 0, sf_start = 0.)
@@ -149,22 +164,30 @@ def fit_datacube(filename):
   # cut the valid range of wavelength
   id_a, id_b = np.searchsorted(sp.wavelengths,
       [wl_ax[0] / (1. + source_redshift), wl_ax[-1] / (1. + source_redshift)])
-  wl_new = (sp.wavelengths)[id_a: id_b + 1]
+  # wl_new = (sp.wavelengths)[id_a: id_b + 1]
+  wl_new = sp.wavelengths[id_a + 1: id_b - 1]
 
   # new cubes for fitting
-  flux_new = np.zeros((wl_new.size, dec_ax.size, ra_ax.size))
-  err_new  = np.zeros((wl_new.size, dec_ax.size, ra_ax.size))
+  flux_new = np.zeros((wl_new.size, dec_ax.size, ra_ax.size)) + np.nan
+  err_new  = np.zeros((wl_new.size, dec_ax.size, ra_ax.size)) + np.nan
   mask_new = np.zeros((wl_new.size, dec_ax.size, ra_ax.size), dtype = 'i4')
 
   # de-redshift and rebin
-  for i_ra in np.arange(N_ra):
-    for i_dec in np.arange(N_dec):
-      flux_i, err_i, mask_i = restframe(wl_ax, flux[:, i_dec, i_ra],
-          err[:, i_dec, i_ra], mask[:, i_dec, i_ra], wl_new,
-          source_redshift, mask_nan = False)
-      flux_new[:, i_dec, i_ra] = flux_i
-      err_new[:, i_dec, i_ra] = err_i
-      mask_new[:, i_dec, i_ra] = mask_i
+  for i_ra, i_dec in itt.product(np.arange(N_ra), np.arange(N_dec)):
+
+    # if outside the hexagon, set nan.
+    if np.sum(mask[:, i_dec, i_ra]) == 0: continue
+
+    # extract from the cube
+    flux_t, err_t, mask_t = \
+        flux[:, i_dec, i_ra], err[:, i_dec, i_ra], mask[:, i_dec, i_ra]
+
+    flux_i, err_i, mask_i = restframe(wl_ax, flux_t, err_t, mask_t,
+        wl_new, source_redshift, mask_nan = False)
+
+    # put into the new cube
+    flux_new[:, i_dec, i_ra], err_new[:, i_dec, i_ra], \
+        mask_new[:, i_dec, i_ra] = flux_i, err_i, mask_i
 
   # close fits file.
   hlst.close()
@@ -174,15 +197,19 @@ def fit_datacube(filename):
   gc.collect()
 
   # pre-processing of spectral cubes
-  flux_new[mask_new < 0.5] = np.nan
-  err_new[mask_new < 0.5]  = np.nan
+  flux_new[mask_new == 0] = np.nan
+  err_new[mask_new == 0]  = np.nan
 
   # DEBUG PLOT
-  ''' # works!
-  plt.imshow(flux_new[:, 36, :], interpolation = 'nearest', aspect = 'auto')
-  plt.show()
-  sys.exit()
-  #'''
+  if True:
+    fig = plt.figure(figsize = (15., 15.))
+    ax1, ax2, ax3 = fig.add_subplot(3, 1, 1), fig.add_subplot(3, 1, 2), fig.add_subplot(3, 1, 3)
+    pl1 = ax1.imshow(np.rot90(flux_new[:, dec_ic, :]), interpolation = 'nearest', aspect = 'auto')
+    pl2 = ax2.imshow(np.rot90(np.log10(err_new[:, dec_ic, :])), interpolation = 'nearest', aspect = 'auto')
+    pl3 = ax3.imshow(np.rot90(mask_new[:, dec_ic, :]), interpolation = 'nearest', aspect = 'auto')
+    plt.colorbar(pl1, ax = ax1), plt.colorbar(pl2, ax = ax2), plt.colorbar(pl3, ax = ax3)
+    plt.show()
+    sys.exit()
 
   '''
     Parameters:
@@ -196,7 +223,7 @@ def fit_datacube(filename):
 
   # init condition and bounds
 
-  init_guess = (0., 0., 2.0, 12., -8.0, 0.00, 1.00, 2.00, 1.0, -8., 15., 0.85, 0.75, 2.0, 0.3) # for N0001
+  init_guess = (0., 0., 2.0, 12., -8.0, 0.00, 1.00, 2.00, 1.0, -8., 15., 0.85, 0.75, 2.0, 0.3)
 
   min_bounds = [(-5., 5.),                  # x_c
                 (-5., 5.),                  # y_c
@@ -230,37 +257,29 @@ def fit_datacube(filename):
     N_dim, N_walkers = len(init_guess), len(init_guess) * 2
 
     # read init condition
-    #'''
     init_guess = np.outer(np.ones(N_walkers), np.array(init_guess))
     init_guess = init_guess + np.random.randn(init_guess.size).reshape(init_guess.shape) * 2.5e-1
-    #'''
 
     # DEBUG
-    '''
-    chain_pt = np.load("./fsps-dssp-specfit-cube-NGC0001V500-PSF2/NGC0001.V500.rscube.fits.chain-02.npy")
-    init_guess = chain_pt[:, -1, :]
-    #'''
+    # chain_pt = np.load("./NGC0001.V500.rscube.fits.chain-02.npy")
+    # init_guess = chain_pt[:, -1, :]
 
     MC_sampler = emcee.EnsembleSampler(N_walkers, N_dim, _log_prob,
         args = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds))
     t0 = time.clock()
-    for I_mc in range(10):
-      if I_mc > 0: MC_sampler.run_mcmc(None, 4)
-      else: MC_sampler.run_mcmc(init_guess, 4)
+    for I_mc in range(100):
+      if I_mc == 0: pos_t, lnp_t, rst_t = MC_sampler.run_mcmc(init_guess, 100)
+      else: pos_t, lnp_t, rst_t = MC_sampler.run_mcmc(pos_t, 100, rstate0 = rst_t, lnprob0 = lnp_t)
       np.save(datacube_path.split('/')[-1] + '.chain-%03u'%(I_mc,), MC_sampler.chain)
       MC_sampler.reset()
     t1 = time.clock()
 
     print "Takes", t1 - t0, "sec to run."
 
-    # samples = MC_sampler.chain
-    # np.save(datacube_path.split('/')[-1] + '.chain', samples)
-
   elif min_solver == "pt":
 
     N_temps = 4
     N_dim, N_walkers = len(init_guess), len(init_guess) * 2
-    # 8 * 8 * 16 = 512
 
     _log_pri = lambda par, flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds: 0.
 
@@ -269,22 +288,18 @@ def fit_datacube(filename):
         loglargs = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds),
         logpargs = (flux_new, err_new, sp, ra_ax, dec_ax, id_a, id_b, min_bounds))
 
-    # DEBUG
-    '''
-    init_sol = np.load("./NGC2410.V500.rscube.fits.ptchain.npy")[:, :, -1, :]
-    '''
-
-    #'''
     init_sol = np.multiply.outer(np.ones(N_temps),\
         np.outer(np.ones(N_walkers), np.array(init_guess)))
     init_sol += 2.5e-1 * np.random.randn(init_sol.size).reshape(init_sol.shape)
-    #'''
+
+    # DEBUG
+    # init_sol = np.load("./NGC2410.V500.rscube.fits.ptchain.npy")[:, :, -1, :]
 
     t0 = time.clock()
-    for I_mc in range(3):
-      if I_mc: MC_sampler.run_mcmc(init_sol, 5)
-      else: MC_sampler.run_mcmc(init_sol, 5)
-      np.save(datacube_path.split('/')[-1] + '.ptchain-%03u'%(I_mc,), MC_sampler.chain)
+    for I_mc in range(10):
+      if I_mc == 0: pos_t, lnp_t, rst_t = MC_sampler.run_mcmc(init_guess, 3)
+      else: pos_t, lnp_t, rst_t = MC_sampler.run_mcmc(pos_t, 3, rstate0 = rst_t, lnprob0 = lnp_t)
+      np.save(datacube_path.split('/')[-1] + '.chain-%03u'%(I_mc,), MC_sampler.chain)
       MC_sampler.reset()
     t1 = time.clock()
 

@@ -48,14 +48,34 @@ def load_califa_cube(fname):
 if __name__ == "__main__":
 
   # flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC0001.V500.rscube.fits")
-  flux, err, mask, ra_ax, dec_ax, wl_ax = load_califa_cube("/home/qinyj/workspace/panofit/califa_sample/NGC2410.V500.rscube.fits")
+  flux, err, mask, ra_ax, dec_ax, wl_ax = load_califa_cube("/home/qinyj/workspace/panofit/califa_sample/NGC4185.V500.rscube.fits")
 
+  ''' 2916
+  d_ra, d_dec, d_r = -4.5, 11.5, 3.
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  #'''
+
+  ''' # 4185
+  d_ra, d_dec, d_r = -12., -1., 3.5
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r: #pass
+      flux[:, i_dec, i_ra] = np.nan
+  d_ra, d_dec, d_r = 3., 30., 2.5
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r: #pass
+      flux[:, i_dec, i_ra] = np.nan
+  #'''
+
+  '''
   plt.imshow(np.rot90(flux[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
   plt.colorbar(); plt.show()
   plt.imshow(np.rot90(err[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
   plt.colorbar(); plt.show()
   plt.imshow(np.rot90(mask[:, 36, :]), interpolation = 'nearest', aspect = 'auto')
   plt.colorbar(); plt.show()
+  '''
 
   # print ra/dec axes
   '''
@@ -104,7 +124,7 @@ if __name__ == "__main__":
   #'''
 
   # plot flux sum
-  '''
+  #'''
   fig = plt.figure(figsize = (12., 12.))
   plt_rg = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]]
 
@@ -123,17 +143,17 @@ if __name__ == "__main__":
 
   ax1 = fig.add_subplot(1, 3, 1)
   pl1 = ax1.imshow(np.rot90(np.swapaxes(flux[id1, :, :], 0, 1)), interpolation = 'nearest',
-      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'equal')
   plt.colorbar(pl1, ax = ax1)
 
   ax2 = fig.add_subplot(1, 3, 2)
   pl2 = ax2.imshow(np.rot90(np.swapaxes(flux[id2, :, :], 0, 1)), interpolation = 'nearest',
-      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'equal')
   plt.colorbar(pl2, ax = ax2)
 
   ax3 = fig.add_subplot(1, 3, 3)
   pl3 = ax3.imshow(np.rot90(np.swapaxes(flux[id3, :, :], 0, 1)), interpolation = 'nearest',
-      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'auto')
+      extent = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]], aspect = 'equal')
   plt.colorbar(pl3, ax = ax3)
 
   plt.show()
