@@ -48,8 +48,37 @@ def load_califa_cube(fname):
 if __name__ == "__main__":
 
   # flux, err, ra_ax, dec_ax, wl_ax = load_califa_cube("./califa_sample/NGC0001.V500.rscube.fits")
-  flux, err, mask, ra_ax, dec_ax, wl_ax = load_califa_cube("/home/qinyj/workspace/panofit/califa_sample/NGC4185.V500.rscube.fits")
+  flux, err, mask, ra_ax, dec_ax, wl_ax = load_califa_cube("/home/qinyj/workspace/panofit/califa_sample/IC2487.V500.rscube.fits")
 
+  ''' 7653
+  d_ra, d_dec, d_r = -10., -32., 3.
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  d_ra, d_dec, d_r = -20., 7., 2.5
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  d_ra, d_dec, d_r = -3., 28., 2.5
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  #'''
+
+  ''' 7466
+  d_ra, d_dec, d_r = -18.5, 4.5, 2.75
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  #'''
+
+  ''' 2410
+  d_ra, d_dec, d_r = 4.5, 15.5, 2.
+  for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
+    if np.sqrt((ra_ax[i_ra] - d_ra) ** 2 + (dec_ax[i_dec] - d_dec) ** 2) < d_r:
+      flux[:, i_dec, i_ra] = np.nan
+  #'''
+ 
   ''' 2916
   d_ra, d_dec, d_r = -4.5, 11.5, 3.
   for i_ra, i_dec in itt.product(range(ra_ax.size), range(dec_ax.size)):
@@ -129,7 +158,7 @@ if __name__ == "__main__":
   plt_rg = [ra_ax[0], ra_ax[-1], dec_ax[0], dec_ax[-1]]
 
   ax1 = fig.add_subplot(1, 1, 1)
-  pl1 = ax1.imshow(np.abs(np.rot90(np.swapaxes(flux.sum(axis = 0), 0, 1))), interpolation = 'nearest', extent = plt_rg, aspect = 'equal')
+  pl1 = ax1.imshow(np.log(np.abs(np.rot90(np.swapaxes(flux.sum(axis = 0), 0, 1)))), interpolation = 'nearest', extent = plt_rg, aspect = 'equal')
   plt.colorbar(pl1, ax = ax1)
 
   plt.show()

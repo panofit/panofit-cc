@@ -149,7 +149,7 @@ if __name__ == "__main__":
   # get parameters:
   datacube_path, chain_path = sys.argv[1],sys.argv[2]
   source_redshift, PSF_size = float(sys.argv[3]), float(sys.argv[4])
-  basename = (datacube_path.split('/')[-1]).split('.')
+  basename = (chain_path.split('/')[-1]).split('.')
   basename = '-'.join(basename)
 
   # load the datacube
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     flux_rf[:, i_dec, i_ra] = flux_i
 
   # load the chain and determine the best solution
-  #'''
+  '''
   print "Finding optimal solution..."
   chain = np.load(chain_path)
   if chain.ndim == 3: # normal ensemble sampler
@@ -189,11 +189,18 @@ if __name__ == "__main__":
   chain = chain[chain[:, 10] <= 1., :]
   par_opt = _density_peak(chain)
   print par_opt
-  ''' # DEBUG
+  #''' # DEBUG
+  '''
   par_opt = (0.86925408, 7.89477418, -8.82317326, -0.4356502, 0.75141268,
              1.93851449, 0.55313915, -9.90119334, 12.76594508, -0.20848418,
              0.88245159, 2.15420082, 0.59015511)
-  '''
+  #'''
+
+  param = np.fromfile(chain_path, dtype = 'f8').reshape((15, 4)).T
+  if np.isfinite(np.sum(param[3, :])): par_opt = param[3, :]
+  elif np.isfinite(np.sum(param[0, :])): par_opt = param[0, :]
+  elif np.isfinite(np.sum(param[2, :])): par_opt = param[2, :]
+  else: print "Bad param file."; sys.exit()
 
   # generate the best-fitting model cube
   print "Making best-fitting model..."

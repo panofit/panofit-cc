@@ -77,10 +77,10 @@ def _mock_spec_cube(ra_ax, dec_ax, par, sp, wl_cut_idx):
 
   # interpolate ssp
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., sersic_age), peraa = True)
-  flux_s = flux_ssp[id_a: id_b + 1]
+  flux_s = flux_ssp[id_a: id_b + 1] / mass_ssp
 
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., exp_age), peraa = True)
-  flux_e = flux_ssp[id_a: id_b + 1]
+  flux_e = flux_ssp[id_a: id_b + 1] / mass_ssp
 
   # construct output datacube
   cube_sersic = np.zeros(shape = (id_b - id_a + 1, dec_ax.size, ra_ax.size), dtype = 'f8')
@@ -155,7 +155,7 @@ if __name__ == "__main__":
   # get parameters:
   datacube_path, chain_path = sys.argv[1],sys.argv[2]
   source_redshift, PSF_size = float(sys.argv[3]), float(sys.argv[4])
-  basename = (datacube_path.split('/')[-1]).split('.')
+  basename = (chain_path.split('/')[-1]).split('.')
   basename = '-'.join(basename)
 
   # load the datacube
@@ -205,7 +205,7 @@ if __name__ == "__main__":
   err_new[mask_new == 0]  = np.nan
 
   # load the chain and determine the best solution
-  #'''
+  '''
   print "Finding optimal solution..."
   chain = np.load(chain_path)
   if chain.ndim == 3: # normal ensemble sampler
@@ -217,6 +217,14 @@ if __name__ == "__main__":
   chain = chain[chain[:,  8] <= 1.1, :]
   par_opt = _density_peak(chain)
   print "best-fitting parameters:", par_opt
+  '''
+
+  param = np.fromfile(chain_path, dtype = 'f8').reshape((4, 15))
+  if np.isfinite(np.sum(param[2, :])): par_opt = param[2, :]
+  elif np.isfinite(np.sum(param[3, :])): par_opt = param[3, :]
+  elif np.isfinite(np.sum(param[1, :])): par_opt = param[1, :]
+  else: print "Bad param file."; sys.exit()
+  print par_opt
 
   # generate the best-fitting model cube
   print "Making best-fitting model..."
@@ -530,7 +538,7 @@ if __name__ == "__main__":
     plt.clf(), plt.close()
 
   # triangle plot
-  if True:
+  if 0:#True:
 
     fig = corner.corner(chain, labels = par_names, truths = par_opt)
     fig.savefig(basename + '-prob.pdf', bbox_inches = 'tight')

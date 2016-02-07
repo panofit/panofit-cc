@@ -51,9 +51,9 @@ def generate_mock_datacube(par, sp, ra_ax, dec_ax, id_a, id_b):
 
   # interpolate ssp
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., sersic_age), peraa = True)
-  flux_s = flux_ssp[id_a: id_b + 1]
+  flux_s = flux_ssp[id_a: id_b + 1] / mass_ssp
   flux_ssp, mass_ssp, lbol_ssp = sp.ztinterp(0., np.power(10., exp_age), peraa = True)
-  flux_e = flux_ssp[id_a: id_b + 1]
+  flux_e = flux_ssp[id_a: id_b + 1] / mass_ssp
 
   # mock cube, follow CALIFA style.
   cube_t = np.zeros([id_b - id_a + 1, dec_ax.size, ra_ax.size])
